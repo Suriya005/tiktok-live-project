@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok Live Gift Tracker - Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .control-panel {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 12px 20px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-connect {
+            background: #00f2ea;
+            color: #000;
+        }
+
+        .btn-connect:hover {
+            background: #00d4cc;
+            transform: translateY(-2px);
+        }
+
+        .btn-disconnect {
+            background: #ff0050;
+            color: white;
+        }
+
+        .btn-disconnect:hover {
+            background: #e6004a;
+            transform: translateY(-2px);
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn-filter {
+            padding: 8px 20px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-filter:hover {
+            background: #f0f0f0;
+        }
+
+        .btn-filter.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            color: #667eea;
+            font-size: 1rem;
+            margin-bottom: 10px;
+        }
+
+        .stat-card .value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #333;
+            transition: transform 0.3s ease, color 0.3s ease;
+        }
+
+        .stat-card .value.updated {
+            animation: pulse 0.5s ease;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.2);
+                color: #667eea;
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .events-container {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            max-height: 600px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .events-container #events {
+            transition: opacity 0.3s ease;
+        }
+
+        .events-container #events.updating {
+            opacity: 0.7;
+        }
+
+        .events-container h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .event {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 10px;
+            animation: slideIn 0.5s ease-out;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .event.removing {
+            animation: slideOut 0.3s ease-out forwards;
+        }
+
+        @keyframes slideOut {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+        }
+
+        .event.gift {
+            background: linear-gradient(135deg, #ff0050 0%, #ff4d85 100%);
+            color: white;
+        }
+
+        .event.comment {
+            background: linear-gradient(135deg, #00f2ea 0%, #69f4ee 100%);
+            color: #000;
+        }
+
+        .event.like {
+            background: linear-gradient(135deg, #ff6b9d 0%, #ffa3c8 100%);
+            color: white;
+        }
+
+        .event.follow {
+            background: linear-gradient(135deg, #667eea 0%, #9198f5 100%);
+            color: white;
+        }
+
+        .event .header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 5px;
+        }
+
+        .event .icon {
+            font-size: 1.5rem;
+        }
+
+        .event .nickname {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .event .content {
+            margin-left: 35px;
+            font-size: 0.95rem;
+        }
+
+        .event .timestamp {
+            text-align: right;
+            font-size: 0.85rem;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .no-events {
+            text-align: center;
+            color: #999;
+            padding: 40px;
+            font-size: 1.2rem;
+        }
+
+        /* Scrollbar styling */
+        .events-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .events-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .events-container::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 10px;
+        }
+
+        .events-container::-webkit-scrollbar-thumb:hover {
+            background: #5568d3;
+        }
+
+        /* Sound settings panel */
+        .sound-settings {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+
+        .sound-settings h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .sound-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .sound-toggle label {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #667eea;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .volume-control label {
+            font-weight: bold;
+            color: #333;
+            min-width: 80px;
+        }
+
+        .volume-control input[type="range"] {
+            flex: 1;
+            max-width: 200px;
+        }
+
+        .volume-value {
+            min-width: 40px;
+            color: #667eea;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎁 TikTok Live Gift Tracker</h1>
+
+        <div class="sound-settings">
+            <h3>🔊 การตั้งค่าเสียง</h3>
+            <div class="sound-toggle">
+                <label class="switch">
+                    <input type="checkbox" id="soundEnabled" checked>
+                    <span class="slider"></span>
+                </label>
+                <label for="soundEnabled">เปิดเสียงแจ้งเตือน</label>
+            </div>
+            <div class="volume-control">
+                <label for="volumeSlider">🔉 ระดับเสียง:</label>
+                <input type="range" id="volumeSlider" min="0" max="100" value="70">
+                <span class="volume-value" id="volumeValue">70%</span>
+            </div>
+        </div>
+
+        <div class="control-panel">
+            <div class="input-group">
+                <input type="text" id="username" placeholder="ใส่ TikTok Username (ไม่ต้องใส่ @)">
+                <button class="btn-connect" onclick="connect()">🔌 เชื่อมต่อ</button>
+                <button class="btn-disconnect" onclick="disconnect()">❌ ยกเลิก</button>
+            </div>
+            <div class="filter-group">
+                <span style="font-weight: bold; line-height: 32px;">แสดง:</span>
+                <button class="btn-filter active" onclick="setFilter('all')">📊 ทั้งหมด</button>
+                <button class="btn-filter" onclick="setFilter('gift')">🎁 ของขวัญ</button>
+                <button class="btn-filter" onclick="setFilter('comment')">💬 คอมเมนต์</button>
+                <button class="btn-filter" onclick="setFilter('like')">❤️ ไลค์</button>
+                <button class="btn-filter" onclick="setFilter('follow')">👤 ติดตาม</button>
+            </div>
+            <div id="status" class="status disconnected">
+                ⚫ ยังไม่ได้เชื่อมต่อ
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>🎁 ของขวัญทั้งหมด</h3>
+                <div class="value" id="giftCount">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>💎 เหรียญทั้งหมด</h3>
+                <div class="value" id="coinCount">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>💬 คอมเมนต์</h3>
+                <div class="value" id="commentCount">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>❤️ ไลค์</h3>
+                <div class="value" id="likeCount">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>👥 ผู้ชม</h3>
+                <div class="value" id="viewerCount">0</div>
+            </div>
+        </div>
+
+        <div class="events-container">
+            <h2>📊 กิจกรรมแบบ Real-time</h2>
+            <div id="events">
+                <div class="no-events">รอการเชื่อมต่อ...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws;
+        let currentUsername = '';
+        let currentFilter = 'all';
+        let allEvents = [];
+        let stats = {
+            gifts: 0,
+            coins: 0,
+            comments: 0,
+            likes: 0,
+            viewers: 0
+        };
+
+        // Sound settings
+        let soundEnabled = true;
+        let soundVolume = 0.7;
+
+        // Audio elements
+        const sounds = {
+            gift: new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZRA0PV63n8bp1IwU7jtrzxnEpBSl+zPLaizsIGGS56+OYSQwNV63o8LdmHAY4kdfy0HwvBSJ2x/DfkD8KE16z6eunVBQKRp/g8r9vIAQxh9Hz1YM0Bh1twO7imUQMD1is5++4dSQEOo3a88ZwKAUpfs3y2Is8CBdkue3kl0kMDFar5u+3ZRsFN5DX8s98LgUidfvv4phEDA9YrOjvuXYkBDqM2vPHbyoFKX7M8tqMOwgXY7jv45dJCwxWq+jwtmQcBjiP1/LPey4FI3XG79yRQAoUXbPq6qZUEwpFnt/yuHAhBDCG0PPVgjQFHW3A7eKXRQwOV6vn77h1IwY5jNryx28oBSl9y/LajDsIF2O48OSXSAwMVqvn77ZkHAU3j9fyz3ouBSN0xe/ckUAJFFyz6uilUxMKRZ7f8rdwIAQwhtDz1YI0BR1rwe7hmUYMDleq5++3dSMGOYza8sZvKAUofcvy2ow8CBZiuO/jl0kLC1ar5u+2YxwFOI3Y8s18LgQjc8Xv3JFBCRNPFVVVQVV0qVj8JEk=' ),
+            bigGift: new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZRA0PV63n8bp1IwU7jtrzxnEpBSl+zPLaizsIGGS56+OYSQwNV63o8LdmHAY4kdfy0HwvBSJ2x/DfkD8KE16z6eunVBQKRp/g8r9vIAQxh9Hz1YM0Bh1twO7imUQMD1is5++4dSQEOo3a88ZwKAUpfs3y2Is8CBdkue3kl0kMDFar5u+3ZRsFN5DX8s98LgUidfvv4phEDA9YrOjvuXYkBDqM2vPHbyoFKX7M8tqMOwgXY7jv45dJCwxWq+jwtmQcBjiP1/LPey4FI3XG79yRQAoUXbPq6qZUEwpFnt/yuHAhBDCG0PPVgjQFHW3A7eKXRQwOV6vn77h1IwY5jNryx28oBSl9y/LajDsIF2O48OSXSAwMVqvn77ZkHAU3j9fyz3ouBSN0xe/ckUAJFFyz6uilUxMKRZ7f8rdwIAQwhtDz1YI0BR1rwe7hmUYMDleq5++3dSMGOYza8sZvKAUofcvy2ow8CBZiuO/jl0kLC1ar5u+2YxwFOI3Y8s18LgQjc8Xv3JFBCRNPFVVVQVV0qVj8JEk='),
+            comment: new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZRA0PV63n8bp1IwU7jtrzxnEpBSl+zPLaizsIGGS56+OYSQwNV63o8LdmHAY4kdfy0HwvBSJ2x/DfkD8KE16z6eunVBQKRp/g8r9vIAQxh9Hz1YM0Bh1twO7imUQMD1is5++4dSQEOo3a88ZwKAUpfs3y2Is8CBdkue3kl0kMDFar5u+3ZRsFN5DX8s98LgUidfvv4phEDA9YrOjvuXYkBDqM2vPHbyoFKX7M8tqMOwgXY7jv45dJCwxWq+jwtmQcBjiP1/LPey4FI3XG79yRQAoUXbPq6qZUEwpFnt/yuHAhBDCG0PPVgjQFHW3A7eKXRQwOV6vn77h1IwY5jNryx28oBSl9y/LajDsIF2O48OSXSAwMVqvn77ZkHAU3j9fyz3ouBSN0xe/ckUAJFFyz6uilUxMKRZ7f8rdwIAQwhtDz1YI0BR1rwe7hmUYMDleq5++3dSMGOYza8sZvKAUofcvy2ow8CBZiuO/jl0kLC1ar5u+2YxwFOI3Y8s18LgQjc8Xv3JFBCRNPFVVVQVV0qVj8JEk='),
+            // C:\0-work-space\tiktok-live-project\tiktok-live-connector\public\sounds\test1.mp3
+            test1: new Audio('public/sounds/test1.mp3'),
+        };
+
+        // Gift names that trigger special sound (customize this!)
+        const specialGiftNames = [
+            'Rose',
+            'TikTok',
+            'Lion',
+            'Galaxy',
+            'Planet',
+            'Rocket',
+            'Sports Car',
+            'Castle'
+        ];
+
+        const API_URL = 'http://localhost:3002';
+        const WS_URL = 'ws://localhost:3002';
+
+        // Play sound function
+        function playSound(soundType) {
+            if (!soundEnabled) return;
+            
+            const sound = sounds[soundType];
+            if (sound) {
+                sound.volume = soundVolume;
+                sound.currentTime = 0;
+                sound.play().catch(err => console.log('Sound play error:', err));
+            }
+        }
+
+        // Volume control
+        document.getElementById('volumeSlider').addEventListener('input', (e) => {
+            soundVolume = e.target.value / 100;
+            document.getElementById('volumeValue').textContent = e.target.value + '%';
+        });
+
+        // Sound toggle
+        document.getElementById('soundEnabled').addEventListener('change', (e) => {
+            soundEnabled = e.target.checked;
+        });
+
+        async function connect() {
+            const username = document.getElementById('username').value.trim();
+            if (!username) {
+                alert('กรุณาใส่ TikTok Username');
+                return;
+            }
+
+            currentUsername = username;
+            updateStatus('กำลังเชื่อมต่อ...', 'disconnected');
+
+            try {
+                // Connect via REST API
+                const response = await fetch(`${API_URL}/api/connect`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username })
+                });
+
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.error || 'Connection failed');
+                }
+
+                console.log('Connected:', data);
+
+                // Connect WebSocket
+                ws = new WebSocket(WS_URL);
+
+                ws.onopen = () => {
+                    updateStatus(`🟢 เชื่อมต่อกับ @${username} แล้ว`, 'connected');
+                    clearEvents();
+                };
+
+                ws.onmessage = (event) => {
+                    const message = JSON.parse(event.data);
+                    handleEvent(message);
+                };
+
+                ws.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                    updateStatus('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ WebSocket', 'disconnected');
+                };
+
+                ws.onclose = () => {
+                    updateStatus('⚫ WebSocket ถูกปิด', 'disconnected');
+                };
+
+            } catch (error) {
+                console.error('Connection error:', error);
+                updateStatus(`❌ เกิดข้อผิดพลาด: ${error.message}`, 'disconnected');
+                alert(`ไม่สามารถเชื่อมต่อได้: ${error.message}`);
+            }
+        }
+
+        async function disconnect() {
+            if (!currentUsername) {
+                alert('ยังไม่ได้เชื่อมต่อ');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/api/disconnect`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: currentUsername })
+                });
+
+                if (ws) {
+                    ws.close();
+                }
+
+                updateStatus('⚫ ยกเลิกการเชื่อมต่อแล้ว', 'disconnected');
+                currentUsername = '';
+                resetStats();
+            } catch (error) {
+                console.error('Disconnect error:', error);
+                alert('เกิดข้อผิดพลาดในการยกเลิกการเชื่อมต่อ');
+            }
+        }
+
+        function handleEvent(message) {
+            console.log('Event:', message);
+
+            if (message.event === 'gift') {
+                handleGift(message.data);
+            } else if (message.event === 'comment') {
+                handleComment(message.data);
+            } else if (message.event === 'like') {
+                handleLike(message.data);
+            } else if (message.event === 'viewers') {
+                handleViewers(message.data);
+            } else if (message.event === 'follow') {
+                handleFollow(message.data);
+            } else if (message.event === 'share') {
+                handleShare(message.data);
+            }
+        }
+
+        function handleGift(data) {
+            stats.gifts++;
+            stats.coins += data.diamondCount * data.repeatCount;
+            updateStats('giftCount');
+            
+            // Also animate coin count after a short delay
+            setTimeout(() => updateStats('coinCount'), 100);
+
+            // Play sound based on gift type
+            playSound('test1');
+            // if (specialGiftNames.includes(data.giftName)) {
+            //     playSound('bigGift');
+            // } else {
+            //     playSound('gift');
+            // }
+
+            const eventHtml = `
+                <div class="event gift" data-type="gift">
+                    <div class="header">
+                        <span class="icon">🎁</span>
+                        <span class="nickname">${data.nickname}</span>
+                    </div>
+                    <div class="content">
+                        ส่ง <strong>${data.giftName}</strong> x${data.repeatCount} 
+                        (💎 ${data.diamondCount * data.repeatCount} เหรียญ)
+                    </div>
+                    <div class="timestamp">${formatTime(data.timestamp)}</div>
+                </div>
+            `;
+            addEvent(eventHtml, 'gift');
+        }
+
+        function handleComment(data) {
+            stats.comments++;
+            updateStats('commentCount');
+
+            const eventHtml = `
+                <div class="event comment" data-type="comment">
+                    <div class="header">
+                        <span class="icon">💬</span>
+                        <span class="nickname">${data.nickname}</span>
+                    </div>
+                    <div class="content">${data.comment}</div>
+                    <div class="timestamp">${formatTime(data.timestamp)}</div>
+                </div>
+            `;
+            addEvent(eventHtml, 'comment');
+        }
+
+        function handleLike(data) {
+            stats.likes += data.likeCount;
+            updateStats('likeCount');
+
+            const eventHtml = `
+                <div class="event like" data-type="like">
+                    <div class="header">
+                        <span class="icon">❤️</span>
+                        <span class="nickname">${data.nickname}</span>
+                    </div>
+                    <div class="content">ส่งไลค์ ${data.likeCount} ครั้ง</div>
+                    <div class="timestamp">${formatTime(data.timestamp)}</div>
+                </div>
+            `;
+            addEvent(eventHtml, 'like');
+        }
+
+        function handleViewers(data) {
+            stats.viewers = data.viewerCount;
+            updateStats('viewerCount');
+        }
+
+        function handleFollow(data) {
+            const eventHtml = `
+                <div class="event follow" data-type="follow">
+                    <div class="header">
+                        <span class="icon">👤</span>
+                        <span class="nickname">${data.nickname}</span>
+                    </div>
+                    <div class="content">เริ่มติดตาม!</div>
+                    <div class="timestamp">${formatTime(data.timestamp)}</div>
+                </div>
+            `;
+            addEvent(eventHtml, 'follow');
+        }
+
+        function handleShare(data) {
+            const eventHtml = `
+                <div class="event follow" data-type="share">
+                    <div class="header">
+                        <span class="icon">📤</span>
+                        <span class="nickname">${data.nickname}</span>
+                    </div>
+                    <div class="content">แชร์ไลฟ์!</div>
+                    <div class="timestamp">${formatTime(data.timestamp)}</div>
+                </div>
+            `;
+            addEvent(eventHtml, 'share');
+        }
+
+        function updateStats(changedStat = null) {
+            // Update all stats
+            const elements = {
+                giftCount: stats.gifts,
+                coinCount: stats.coins,
+                commentCount: stats.comments,
+                likeCount: stats.likes,
+                viewerCount: stats.viewers
+            };
+
+            Object.keys(elements).forEach(key => {
+                const element = document.getElementById(key);
+                const newValue = elements[key].toLocaleString();
+                
+                if (element.textContent !== newValue) {
+                    element.textContent = newValue;
+                    
+                    // Add pulse animation to changed stat
+                    if (changedStat && key === changedStat) {
+                        element.classList.add('updated');
+                        setTimeout(() => {
+                            element.classList.remove('updated');
+                        }, 500);
+                    }
+                }
+            });
+        }
+
+        function resetStats() {
+            stats = { gifts: 0, coins: 0, comments: 0, likes: 0, viewers: 0 };
+            updateStats();
+            clearEvents();
+        }
+
+        function updateStatus(message, className) {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status ${className}`;
+        }
+
+        function addEvent(html, type) {
+            // Store event with type
+            allEvents.unshift({ html, type, timestamp: Date.now() });
+            
+            // Keep only last 100 events in memory
+            if (allEvents.length > 100) {
+                allEvents.pop();
+            }
+
+            // Smooth re-render
+            const eventsDiv = document.getElementById('events');
+            const shouldScroll = eventsDiv.scrollTop < 50; // Check if user is at top
+            
+            renderEvents();
+            
+            // Auto-scroll to top if user was already there
+            if (shouldScroll) {
+                eventsDiv.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+
+        function renderEvents() {
+            const eventsDiv = document.getElementById('events');
+            
+            // Filter events based on current filter
+            let filteredEvents = allEvents;
+            if (currentFilter !== 'all') {
+                filteredEvents = allEvents.filter(event => event.type === currentFilter);
+            }
+
+            // Clear and render with smooth transition
+            if (filteredEvents.length === 0) {
+                eventsDiv.style.opacity = '0';
+                setTimeout(() => {
+                    eventsDiv.innerHTML = '<div class="no-events">ไม่มีกิจกรรมในหมวดนี้</div>';
+                    eventsDiv.style.opacity = '1';
+                }, 150);
+                return;
+            }
+
+            // Smooth update
+            const newHTML = filteredEvents.slice(0, 50).map((event, index) => {
+                // Add slight delay for staggered animation
+                return event.html.replace('animation: slideIn', `animation: slideIn; animation-delay: ${index * 0.02}s`);
+            }).join('');
+
+            if (eventsDiv.innerHTML !== newHTML) {
+                eventsDiv.style.opacity = '0.7';
+                setTimeout(() => {
+                    eventsDiv.innerHTML = newHTML;
+                    eventsDiv.style.opacity = '1';
+                }, 100);
+            }
+        }
+
+        function setFilter(filterType) {
+            currentFilter = filterType;
+            
+            // Update button states
+            document.querySelectorAll('.btn-filter').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Re-render events
+            renderEvents();
+        }
+
+        function clearEvents() {
+            const eventsDiv = document.getElementById('events');
+            eventsDiv.style.opacity = '0';
+            setTimeout(() => {
+                allEvents = [];
+                eventsDiv.innerHTML = '<div class="no-events">รอการเชื่อมต่อ...</div>';
+                eventsDiv.style.opacity = '1';
+            }, 200);
+        }
+
+        function formatTime(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleTimeString('th-TH');
+        }
+
+        // Allow Enter key to connect
+        document.getElementById('username').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                connect();
+            }
+        });
+    </script>
+</body>
+</html>

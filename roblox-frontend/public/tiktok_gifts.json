@@ -1,0 +1,116 @@
+[
+  {
+    "id": 5655,
+    "name": "Rose",
+    "diamond_cost": 1,
+    "image_url": "https://p19-webcast.tiktokcdn.com/img/maliva/webcast-va/resource/rose_0906.png~tplv-obj.png"
+  },
+  {
+    "id": 5269,
+    "name": "TikTok",
+    "diamond_cost": 1,
+    "image_url": "https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/resource/tiktok_0906.png~tplv-obj.png"
+  },
+  {
+    "id": 5585,
+    "name": "Finger Heart",
+    "diamond_cost": 5,
+    "image_url": "https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/resource/finger_heart.png~tplv-obj.png"
+  },
+  {
+    "id": 5487,
+    "name": "Mic",
+    "diamond_cost": 5,
+    "image_url": "https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/resource/mic_0906.png~tplv-obj.png"
+  },
+  {
+    "id": 5658,
+    "name": "Panda",
+    "diamond_cost": 5,
+    "image_url": "https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/resource/panda.png~tplv-obj.png"
+  },
+  {
+    "id": 5760,
+    "name": "Mini Speaker",
+    "diamond_cost": 1,
+    "image_url": "https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/resource/mini_speaker_0906.png~tplv-obj.png"
+  },
+  {
+    "id": 5660,
+    "name": "Ice Cream",
+    "diamond_cost": 1,
+    "image_url": "https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/resource/ice_cream_0906.png~tplv-obj.png"
+  },
+  {
+    "id": 37,
+    "name": "GG",
+    "diamond_cost": 1,
+    "image_url": "https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/resource/gg_0906.png~tplv-obj.png"
+  },
+  {
+    "id": 6059,
+    "name": "Hand Wave",
+    "diamond_cost": 9,
+    "image_url": "https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/resource/hand_wave.png~tplv-obj.png"
+  },
+  {
+    "id": 5650,
+    "name": "Lollipop",
+    "diamond_cost": 10,
+    "image_url": "https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/resource/lollipop_0906.png~tplv-obj.png"
+  },
+  {
+    "id": 6052,
+    "name": "Little Crown",
+    "diamond_cost": 99,
+    "image_url": "https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/resource/little_crown.png~tplv-obj.png"
+  },
+  {
+    "id": 6047,
+    "name": "Paper Crane",
+    "diamond_cost": 99,
+    "image_url": "https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/resource/paper_crane.png~tplv-obj.png"
+  },
+  {
+    "id": 5828,
+    "name": "Heart",
+    "diamond_cost": 10,
+    "image_url": "https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/resource/heart_0906.png~tplv-obj.png"
+  },
+  {
+    "id": 5509,
+    "name": "Confetti",
+    "diamond_cost": 100,
+    "image_url": "https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/resource/confetti_0906.png~tplv-obj.png"
+  },
+  {
+    "id": 6036,
+    "name": "Money Gun",
+    "diamond_cost": 500,
+    "image_url": "https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/resource/money_gun.png~tplv-obj.png"
+  },
+  {
+    "id": 6042,
+    "name": "Galaxy",
+    "diamond_cost": 1000,
+    "image_url": "https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/resource/galaxy_0906.png~tplv-obj.png"
+  },
+  {
+    "id": 6436,
+    "name": "Whale Diving",
+    "diamond_cost": 2150,
+    "image_url": "https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/resource/whale_diving.png~tplv-obj.png"
+  },
+  {
+    "id": 6625,
+    "name": "Lion",
+    "diamond_cost": 29999,
+    "image_url": "https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/resource/lion.png~tplv-obj.png"
+  },
+  {
+    "id": 6617,
+    "name": "TikTok Universe",
+    "diamond_cost": 34999,
+    "image_url": "https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/resource/tiktok_universe.png~tplv-obj.png"
+  }
+]

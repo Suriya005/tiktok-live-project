@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google OAuth Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        button {
+            background: #4285f4;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #357ae8;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .info {
+            background: #e8f5e9;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+            display: none;
+        }
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+            display: none;
+        }
+        .user-info {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+        pre {
+            background: #263238;
+            color: #aed581;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .token-box {
+            background: #fff3e0;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Google OAuth Test</h1>
+        <p>Test your Google OAuth integration</p>
+
+        <div>
+            <button id="loginBtn" onclick="loginWithGoogle()">
+                🚀 Login with Google (OAuth Flow)
+            </button>
+            <button id="getProfileBtn" onclick="getProfile()" disabled>
+                👤 Get Profile
+            </button>
+            <button id="logoutBtn" onclick="logout()" disabled>
+                🚪 Logout
+            </button>
+        </div>
+
+        <div id="info" class="info"></div>
+        <div id="error" class="error"></div>
+
+        <div id="userInfo" style="display: none;">
+            <h3>User Profile:</h3>
+            <div class="user-info">
+                <pre id="userDetails"></pre>
+            </div>
+        </div>
+
+        <div id="tokens" style="display: none;">
+            <h3>Tokens:</h3>
+            <div>
+                <strong>Access Token:</strong>
+                <div class="token-box" id="accessToken"></div>
+            </div>
+            <div>
+                <strong>Refresh Token:</strong>
+                <div class="token-box" id="refreshToken"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3001/api/v1';
+        let accessToken = null;
+        let refreshToken = null;
+
+        // Check for tokens in URL (from OAuth callback)
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log('Current URL:', window.location.href);
+            console.log('Search params:', window.location.search);
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const tokenFromUrl = urlParams.get('accessToken');
+            const refreshTokenFromUrl = urlParams.get('refreshToken');
+
+            if (tokenFromUrl && refreshTokenFromUrl) {
+                accessToken = tokenFromUrl;
+                refreshToken = refreshTokenFromUrl;
+                
+                // Store in localStorage
+                localStorage.setItem('accessToken', accessToken);
+                localStorage.setItem('refreshToken', refreshToken);
+
+                // Clean URL
+                window.history.replaceState({}, document.title, '/test-google-auth.html');
+
+                showInfo('✅ Login successful! Tokens received.');
+                displayTokens();
+                enableButtons();
+            } else {
+                // Try to load from localStorage
+                accessToken = localStorage.getItem('accessToken');
+                refreshToken = localStorage.getItem('refreshToken');
+                
+                if (accessToken && refreshToken) {
+                    showInfo('ℹ️ Tokens loaded from storage');
+                    displayTokens();
+                    enableButtons();
+                }
+            }
+        });
+
+        async function loginWithGoogle() {
+            try {
+                showInfo('🔄 Redirecting to Google...');
+                
+                const response = await fetch(`${API_BASE}/auth/google`);
+                const data = await response.json();
+
+                if (data.success) {
+                    // Redirect to Google OAuth
+                    window.location.href = data.data.authUrl;
+                } else {
+                    showError('Failed to get Google auth URL');
+                }
+            } catch (error) {
+                showError('Error: ' + error.message);
+            }
+        }
+
+        async function getProfile() {
+            try {
+                showInfo('🔄 Loading profile...');
+
+                const response = await fetch(`${API_BASE}/me`, {
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('userDetails').textContent = 
+                        JSON.stringify(data.data.user, null, 2);
+                    document.getElementById('userInfo').style.display = 'block';
+                    showInfo('✅ Profile loaded successfully');
+                } else {
+                    showError('Failed to load profile: ' + data.error.message);
+                }
+            } catch (error) {
+                showError('Error: ' + error.message);
+            }
+        }
+
+        async function logout() {
+            try {
+                showInfo('🔄 Logging out...');
+
+                const response = await fetch(`${API_BASE}/auth/logout`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ refreshToken })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Clear tokens
+                    accessToken = null;
+                    refreshToken = null;
+                    localStorage.removeItem('accessToken');
+                    localStorage.removeItem('refreshToken');
+
+                    document.getElementById('userInfo').style.display = 'none';
+                    document.getElementById('tokens').style.display = 'none';
+                    
+                    disableButtons();
+                    showInfo('✅ Logged out successfully');
+                } else {
+                    showError('Logout failed: ' + data.error.message);
+                }
+            } catch (error) {
+                showError('Error: ' + error.message);
+            }
+        }
+
+        function displayTokens() {
+            document.getElementById('accessToken').textContent = accessToken;
+            document.getElementById('refreshToken').textContent = refreshToken;
+            document.getElementById('tokens').style.display = 'block';
+        }
+
+        function enableButtons() {
+            document.getElementById('loginBtn').disabled = true;
+            document.getElementById('getProfileBtn').disabled = false;
+            document.getElementById('logoutBtn').disabled = false;
+        }
+
+        function disableButtons() {
+            document.getElementById('loginBtn').disabled = false;
+            document.getElementById('getProfileBtn').disabled = true;
+            document.getElementById('logoutBtn').disabled = true;
+        }
+
+        function showInfo(message) {
+            const infoDiv = document.getElementById('info');
+            const errorDiv = document.getElementById('error');
+            
+            infoDiv.textContent = message;
+            infoDiv.style.display = 'block';
+            errorDiv.style.display = 'none';
+
+            setTimeout(() => {
+                infoDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        function showError(message) {
+            const infoDiv = document.getElementById('info');
+            const errorDiv = document.getElementById('error');
+            
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            infoDiv.style.display = 'none';
+        }
+    </script>
+</body>
+</html>

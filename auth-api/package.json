@@ -1,0 +1,49 @@
+{
+  "name": "tiktok-live-auth-api",
+  "version": "1.0.0",
+  "description": "Production-ready authentication microservice with register, login, refresh, logout, and profile endpoints",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "start:prod": "NODE_ENV=production node src/app.js",
+    "dev": "nodemon src/app.js",
+    "frontend": "node frontend-server.js",
+    "test": "jest --coverage",
+    "test:watch": "jest --watch"
+  },
+  "keywords": [
+    "authentication",
+    "express",
+    "mongodb",
+    "jwt",
+    "rest-api",
+    "microservice"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.2",
+    "bcrypt": "^5.1.1",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "express-validator": "^7.0.1",
+    "googleapis": "^130.0.0",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongodb": "^7.0.0",
+    "mongoose": "^8.0.3",
+    "morgan": "^1.10.0",
+    "winston": "^3.19.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.2",
+    "supertest": "^6.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

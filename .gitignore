@@ -137,3 +137,17 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# dotenv environment variable files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.example
+
+auth-api\src\config
+
+# all config files
+auth-api\src\config\*.*
+auth-api\src\db\*.*
+

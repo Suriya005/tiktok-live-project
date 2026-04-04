@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - TikTok Live</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+        }
+
+        .navbar {
+            background: white;
+            padding: 15px 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .navbar h1 {
+            color: #667eea;
+            font-size: 24px;
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #667eea;
+        }
+
+        .profile-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin: 0 auto 20px;
+            display: block;
+            border: 4px solid #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .default-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.2);
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .default-avatar svg {
+            width: 60px;
+            height: 60px;
+            opacity: 0.8;
+        }
+
+        .profile-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            color: white;
+        }
+
+        .profile-header h3 {
+            margin-top: 10px;
+            font-size: 24px;
+        }
+
+        .profile-header p {
+            margin-top: 5px;
+            opacity: 0.9;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            font-size: 12px;
+            margin-top: 10px;
+            line-height: 1.4;
+            vertical-align: middle;
+        }
+
+        .google-badge {
+            background: #4285f4;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 11px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 10px;
+            line-height: 1.4;
+            vertical-align: middle;
+        }
+
+        .logout-btn {
+            padding: 8px 20px;
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .card h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .profile-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .profile-item {
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+
+        .profile-item label {
+            display: block;
+            color: #666;
+            font-size: 12px;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .profile-item .value {
+            color: #333;
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .token-box {
+            background: #263238;
+            color: #aed581;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            word-break: break-all;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <h1>🎥 TikTok Live Dashboard</h1>
+        <div class="user-menu">
+            <img id="userAvatar" src="" alt="Avatar" class="avatar" style="display: none;">
+            <span id="userName"></span>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <h2>👤 Profile Information</h2>
+            <div class="profile-header" id="profileHeader">
+                <!-- Profile header will be inserted here -->
+            </div>
+            <div class="profile-grid" id="profileGrid">
+                <!-- Profile data will be inserted here -->
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🔑 Access Token</h2>
+            <div class="token-box" id="accessToken">Loading...</div>
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="copyToken('access')">Copy Token</button>
+                <button class="btn btn-secondary" onclick="refreshTokens()">Refresh Token</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🔄 Refresh Token</h2>
+            <div class="token-box" id="refreshToken">Loading...</div>
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="copyToken('refresh')">Copy Token</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3001/api/v1';
+
+        async function loadDashboard() {
+            const accessToken = localStorage.getItem('accessToken');
+            const refreshToken = localStorage.getItem('refreshToken');
+
+            if (!accessToken) {
+                window.location.href = '/';
+                return;
+            }
+
+            // Display tokens
+            document.getElementById('accessToken').textContent = accessToken;
+            document.getElementById('refreshToken').textContent = refreshToken;
+
+            // Load user data
+            try {
+                const response = await fetch(`${API_BASE}/me`, {
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const user = data.data.user;
+                    displayProfile(user);
+                } else {
+                    alert('Failed to load profile. Please login again.');
+                    window.location.href = '/';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error loading profile. Please login again.');
+                window.location.href = '/';
+            }
+        }
+
+        function displayProfile(user) {
+            // Update navbar
+            document.getElementById('userName').textContent = user.name;
+            
+            // Update navbar avatar
+            const navAvatar = document.getElementById('userAvatar');
+            if (user.avatar) {
+                navAvatar.src = user.avatar;
+                navAvatar.style.display = 'block';
+            } else {
+                // Hide image and keep default behavior
+                navAvatar.style.display = 'none';
+            }
+
+            // Build profile header with avatar
+            const profileHeader = document.getElementById('profileHeader');
+            const isGoogleUser = user.isGoogleUser
+            
+            // Avatar section - show default if no avatar
+            const avatarHtml = user.avatar 
+                ? `<img src="${user.avatar}" alt="${user.name}" class="profile-avatar">`
+                : `<div class="default-avatar">
+                    <svg viewBox="0 0 24 24" fill="white">
+                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                    </svg>
+                   </div>`;
+            
+            profileHeader.innerHTML = `
+                ${avatarHtml}
+                <h3>${user.name}</h3>
+                <p>${user.email}</p>
+                <div class="badge">${user.role.toUpperCase()}</div>
+                ${isGoogleUser ? `
+                    <div class="google-badge">
+                        <svg width="16" height="16" viewBox="0 0 24 24">
+                            <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                            <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        </svg>
+                        Signed in with Google
+                    </div>
+                ` : ''}
+            `;
+
+            // Build profile grid
+            const profileGrid = document.getElementById('profileGrid');
+            const fields = [
+                { label: 'User ID', value: user.id },
+                { label: 'Created At', value: new Date(user.createdAt).toLocaleString('th-TH', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric', 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                })},
+                { label: 'Updated At', value: new Date(user.updatedAt).toLocaleString('th-TH', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric', 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                })},
+            ];
+
+            profileGrid.innerHTML = fields.map(field => `
+                <div class="profile-item">
+                    <label>${field.label}</label>
+                    <div class="value">${field.value}</div>
+                </div>
+            `).join('');
+        }
+
+        async function logout() {
+            const refreshToken = localStorage.getItem('refreshToken');
+
+            try {
+                await fetch(`${API_BASE}/auth/logout`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ refreshToken })
+                });
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+
+            // Clear local storage
+            localStorage.clear();
+            window.location.href = '/';
+        }
+
+        async function refreshTokens() {
+            const refreshToken = localStorage.getItem('refreshToken');
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/refresh`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ refreshToken })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    localStorage.setItem('accessToken', data.data.accessToken);
+                    localStorage.setItem('refreshToken', data.data.refreshToken);
+                    
+                    document.getElementById('accessToken').textContent = data.data.accessToken;
+                    document.getElementById('refreshToken').textContent = data.data.refreshToken;
+                    
+                    alert('✅ Tokens refreshed successfully!');
+                } else {
+                    alert('❌ Failed to refresh tokens');
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        function copyToken(type) {
+            const tokenElement = document.getElementById(type === 'access' ? 'accessToken' : 'refreshToken');
+            const token = tokenElement.textContent;
+            
+            navigator.clipboard.writeText(token).then(() => {
+                alert('✅ Token copied to clipboard!');
+            }).catch(err => {
+                alert('❌ Failed to copy token');
+            });
+        }
+
+        // Load dashboard on page load
+        loadDashboard();
+    </script>
+</body>
+</html>

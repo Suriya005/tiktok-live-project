@@ -1,0 +1,19 @@
+{
+  "name": "tiktok-gift-processor",
+  "version": "1.0.0",
+  "description": "TikTok Live gift processor that converts gifts to game events",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "tiktok",
+    "live",
+    "gift",
+    "processor"
+  ],
+  "author": "",
+  "license": "ISC"
+}
