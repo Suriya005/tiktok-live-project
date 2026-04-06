@@ -27,7 +27,6 @@ export default function Overlay({ sessionId, onReady }) {
     // Listen for question started
     socket.on('question-started', (data) => {
       console.log('📝 Question started:', data);
-      console.log('📋 Question options:', data.question.options);
       setCurrentQuestion(data.question);
       setHint(null);
       setWinner(null);
@@ -175,7 +174,7 @@ export default function Overlay({ sessionId, onReady }) {
     <div className="overlay-container">
       {/* Connection Status */}
       <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 10001 }}>
-        <span style={{ 
+        <span style={{
           color: connected ? '#00ff00' : '#ff0000',
           fontSize: '12px',
           fontWeight: 'bold'
@@ -196,7 +195,7 @@ export default function Overlay({ sessionId, onReady }) {
         <div className="question-card">
           <span className="question-category">{currentQuestion.category}</span>
           <div className="question-text">{currentQuestion.text}</div>
-          
+
           <div className="question-meta">
             <div className="meta-item">
               <span className="meta-label">คะแนน</span>
@@ -265,7 +264,7 @@ export default function Overlay({ sessionId, onReady }) {
           <div className="coin-progress">
             <div className="progress-label">💎 Gift Coins Progress</div>
             <div className="progress-bar">
-              <div 
+              <div
                 className="progress-fill"
                 style={{ width: `${Math.min(hintProgress, 100)}%` }}
               >
