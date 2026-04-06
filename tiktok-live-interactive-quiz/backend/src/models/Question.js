@@ -124,6 +124,72 @@ class Question {
       };
     }
   }
+
+  static async findWithFilters(filters = {}) {
+    const db = getDB();
+    const collection = db.collection('questions');
+    
+    // Build MongoDB query
+    const query = {};
+    
+    // Search filter (text search in question text)
+    if (filters.search && filters.search.trim()) {
+      query.text = { $regex: filters.search, $options: 'i' };
+    }
+    
+    // Category filter (support multiple categories)
+    if (filters.category && filters.category.length > 0) {
+      query.category = { $in: filters.category };
+    }
+    
+    // Tag filter (support multiple tags)
+    if (filters.tags && filters.tags.length > 0) {
+      query.tags = { $in: filters.tags };
+    }
+    
+    // Difficulty filter
+    if (filters.difficulty !== undefined && filters.difficulty !== null && filters.difficulty !== '') {
+      query.difficulty = parseInt(filters.difficulty);
+    }
+    
+    // Pagination
+    const page = Math.max(1, parseInt(filters.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(filters.limit) || 20));
+    const skip = (page - 1) * limit;
+    
+    try {
+      // Get total count for pagination
+      const total = await collection.countDocuments(query);
+      
+      // Get paginated results
+      const questions = await collection
+        .find(query)
+        .skip(skip)
+        .limit(limit)
+        .toArray();
+      
+      return {
+        questions,
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit)
+        }
+      };
+    } catch (error) {
+      console.error('Error in findWithFilters:', error);
+      return {
+        questions: [],
+        pagination: {
+          page: 1,
+          limit,
+          total: 0,
+          pages: 0
+        }
+      };
+    }
+  }
 }
 
 module.exports = Question;

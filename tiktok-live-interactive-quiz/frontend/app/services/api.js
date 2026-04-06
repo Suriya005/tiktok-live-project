@@ -8,8 +8,31 @@ const api = axios.create({
 });
 
 // Questions
-export const getQuestions = async () => {
-  const response = await api.get('/questions');
+export const getQuestions = async (filters = {}) => {
+  // Send filters as POST body
+  const payload = {
+    search: filters.search || '',
+    category: filters.category || [],
+    tags: filters.tags || [],
+    difficulty: filters.difficulty || null,
+    page: filters.page || 1,
+    limit: filters.limit || 20
+  };
+  
+  const response = await api.post('/questions/search', payload);
+  return response.data;
+};
+
+export const getRandomQuestion = async (filters = {}) => {
+  // Get random question matching filters
+  const payload = {
+    search: filters.search || '',
+    category: filters.category || [],
+    tags: filters.tags || [],
+    difficulty: filters.difficulty || null
+  };
+  
+  const response = await api.post('/questions/random', payload);
   return response.data;
 };
 
@@ -43,12 +66,6 @@ export const getQuestionsByTags = async (tags) => {
   const response = await api.get('/questions/by-tags', { 
     params: { tags: tagArray }
   });
-  return response.data;
-};
-
-export const getRandomQuestion = async (tags = null) => {
-  const params = tags ? { tags: Array.isArray(tags) ? tags : [tags] } : {};
-  const response = await api.get('/questions/random', { params });
   return response.data;
 };
 

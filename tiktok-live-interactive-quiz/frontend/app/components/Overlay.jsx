@@ -194,6 +194,7 @@ export default function Overlay({ sessionId, onReady }) {
       {displayState === 'question' && (
         <div className="question-card">
           <span className="question-category">{currentQuestion.category}</span>
+          <span className="meta-value">{'⭐'.repeat(currentQuestion.difficulty || 0)}</span>
           <div className="question-text">{currentQuestion.text}</div>
 
           <div className="question-meta">

@@ -36,9 +36,130 @@ const createQuestion = async (req, res) => {
 
 const getAllQuestions = async (req, res) => {
   try {
-    const questions = await Question.findAll();
-    res.json({ success: true, questions });
+    console.log('Fetching questions with filters:', req.query.category);
+    // Extract query parameters for filtering
+    const filters = {
+      search: req.query.search || '',
+      category: req.query.category ? (Array.isArray(req.query.category) ? req.query.category : [req.query.category]) : [],
+      tags: req.query.tags ? (Array.isArray(req.query.tags) ? req.query.tags : [req.query.tags]) : [],
+      difficulty: req.query.difficulty || null,
+      page: req.query.page || 1,
+      limit: req.query.limit || 20
+    };
+
+    // Use filtered query if any filter is provided
+    const hasFilters = filters.search || filters.category.length > 0 || filters.tags.length > 0 || filters.difficulty;
+    
+    if (hasFilters) {
+      const result = await Question.findWithFilters(filters);
+      return res.json({ 
+        success: true, 
+        questions: result.questions,
+        pagination: result.pagination,
+        filters
+      });
+    }
+    
+    // If no filters, return paginated questions
+    const result = await Question.findWithFilters(filters);
+    res.json({ 
+      success: true, 
+      questions: result.questions,
+      pagination: result.pagination
+    });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const searchQuestions = async (req, res) => {
+  try {
+    // Extract filters from request body
+    const { search, category, tags, difficulty, page, limit } = req.body;
+
+    const filters = {
+      search: search || '',
+      category: category ? (Array.isArray(category) ? category : [category]) : [],
+      tags: tags ? (Array.isArray(tags) ? tags : [tags]) : [],
+      difficulty: difficulty || null,
+      page: page || 1,
+      limit: limit || 20
+    };
+
+    // Log only active filters
+    const activeFilters = {};
+    if (filters.search && filters.search.trim()) activeFilters.search = filters.search;
+    if (filters.category && filters.category.length > 0) activeFilters.category = filters.category;
+    if (filters.tags && filters.tags.length > 0) activeFilters.tags = filters.tags;
+    if (filters.difficulty !== undefined && filters.difficulty !== null) activeFilters.difficulty = filters.difficulty;
+    activeFilters.page = filters.page;
+    activeFilters.limit = filters.limit;
+
+    console.log('📝 Searching questions with filters:', activeFilters);
+
+    // Use filtered query
+    const result = await Question.findWithFilters(filters);
+    
+    res.json({ 
+      success: true, 
+      questions: result.questions,
+      pagination: result.pagination,
+      filters: {
+        search: filters.search,
+        category: filters.category,
+        tags: filters.tags,
+        difficulty: filters.difficulty
+      }
+    });
+  } catch (error) {
+    console.error('Error searching questions:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getRandomQuestionWithFilters = async (req, res) => {
+  try {
+    // Extract filters from request body
+    const { search, category, tags, difficulty } = req.body;
+
+    const filters = {
+      search: search || '',
+      category: category ? (Array.isArray(category) ? category : [category]) : [],
+      tags: tags ? (Array.isArray(tags) ? tags : [tags]) : [],
+      difficulty: difficulty || null,
+      page: 1,
+      limit: 1000  // Get up to 1000 matching questions to randomly pick from
+    };
+
+    // Log active filters
+    const activeFilters = {};
+    if (filters.search && filters.search.trim()) activeFilters.search = filters.search;
+    if (filters.category && filters.category.length > 0) activeFilters.category = filters.category;
+    if (filters.tags && filters.tags.length > 0) activeFilters.tags = filters.tags;
+    if (filters.difficulty !== undefined && filters.difficulty !== null) activeFilters.difficulty = filters.difficulty;
+
+    console.log('🎲 Getting random question with filters:', activeFilters);
+
+    // Get matching questions
+    const result = await Question.findWithFilters(filters);
+    
+    if (!result.questions || result.questions.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'No questions found matching the filters' 
+      });
+    }
+
+    // Pick random question
+    const randomQuestion = result.questions[Math.floor(Math.random() * result.questions.length)];
+
+    res.json({ 
+      success: true, 
+      question: randomQuestion,
+      totalMatching: result.pagination.total
+    });
+  } catch (error) {
+    console.error('Error getting random question:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -340,6 +461,8 @@ const setWinnerManually = async (req, res) => {
 module.exports = {
   createQuestion,
   getAllQuestions,
+  searchQuestions,
+  getRandomQuestionWithFilters,
   getQuestionById,
   updateQuestion,
   deleteQuestion,

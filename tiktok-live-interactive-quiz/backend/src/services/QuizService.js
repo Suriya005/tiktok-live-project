@@ -37,6 +37,8 @@ class QuizService {
         points: question.points,
         requiredCoins: question.requiredCoins,
         options: question.options,
+        difficulty: question.difficulty,
+        hint: question.hint
       };
 
       answeredUsers.clear();

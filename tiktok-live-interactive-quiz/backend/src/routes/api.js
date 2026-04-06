@@ -12,6 +12,12 @@ router.get('/questions/category/:category', quizController.getQuestionsByCategor
 router.get('/questions/by-tags', quizController.getQuestionsByTags);
 router.get('/questions/filter-options', quizController.getFilterOptions);
 
+// POST Search endpoint
+router.post('/questions/search', quizController.searchQuestions);
+
+// POST Random endpoint
+router.post('/questions/random', quizController.getRandomQuestionWithFilters);
+
 // Generic routes last
 router.get('/questions', quizController.getAllQuestions);
 router.get('/questions/:id', quizController.getQuestionById);
