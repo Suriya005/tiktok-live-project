@@ -7,6 +7,7 @@ let currentQuestion = null;
 let currentSessionId = null;
 let answeredUsers = new Set();
 let questionStartTime = null;
+let questionAnswered = false;
 
 class QuizService {
   static initialize(socketIo) {
@@ -38,10 +39,12 @@ class QuizService {
         requiredCoins: question.requiredCoins,
         options: question.options,
         difficulty: question.difficulty,
-        hint: question.hint
+        hint: question.hint,
+        answer: question.answer
       };
 
       answeredUsers.clear();
+      questionAnswered = false;
 
       if (io) {
         io.emit('question-started', {
@@ -65,6 +68,11 @@ class QuizService {
         return { success: false, error: 'No active question' };
       }
 
+      // Check if question already answered by someone
+      if (questionAnswered) {
+        return { success: false, error: 'Question already answered by someone else' };
+      }
+
       // Check if user already answered
       if (answeredUsers.has(tiktokId)) {
         return { success: false, error: 'User already answered' };
@@ -75,6 +83,9 @@ class QuizService {
       console.log(`📝 Answer result: isCorrect=${result.isCorrect}, answer="${userAnswer}"`);
 
       if (result.isCorrect) {
+        // Mark question as answered
+        questionAnswered = true;
+
         // Mark user as answered
         answeredUsers.add(tiktokId);
 
@@ -93,6 +104,7 @@ class QuizService {
             tiktokId,
             nickname,
             points: result.points,
+            answer: currentQuestion.answer,
             timestamp: new Date()
           });
           // Reset hint progress
@@ -174,6 +186,7 @@ class QuizService {
       currentQuestion = null;
       questionStartTime = null;
       answeredUsers.clear();
+      questionAnswered = false;
 
       if (io) {
         io.emit('question-skipped', { timestamp: new Date() });
@@ -192,6 +205,18 @@ class QuizService {
 
   static getAnsweredUsers() {
     return Array.from(answeredUsers);
+  }
+
+  static addAnsweredUser(tiktokId) {
+    answeredUsers.add(tiktokId);
+  }
+
+  static isQuestionAnswered() {
+    return questionAnswered;
+  }
+
+  static setQuestionAnswered(answered) {
+    questionAnswered = answered;
   }
 }
 

@@ -428,9 +428,30 @@ const setWinnerManually = async (req, res) => {
       return res.status(400).json({ error: 'tiktokId, nickname, and sessionId are required' });
     }
 
+    // Check if question already answered by someone
+    if (QuizService.isQuestionAnswered?.()) {
+      return res.status(400).json({ error: 'Question already answered by someone else' });
+    }
+
+    // Check if user already answered this question (using QuizService)
+    const answeredUsers = QuizService.getAnsweredUsers?.();
+    if (answeredUsers && answeredUsers.includes(tiktokId)) {
+      return res.status(400).json({ error: 'User already answered this question' });
+    }
+
     // Get current question to get points
     const currentQuestion = QuizService.getCurrentQuestion?.();
-    const points = currentQuestion?.points || 10;
+    if (!currentQuestion) {
+      return res.status(400).json({ error: 'No active question' });
+    }
+    
+    const points = currentQuestion.points || 10;
+
+    // Mark question as answered
+    QuizService.setQuestionAnswered?.(true);
+
+    // Add user to answered set (same as processAnswer does)
+    QuizService.addAnsweredUser?.(tiktokId);
 
     // Log points to database
     await PointsLog.addPoints(tiktokId, nickname, points, 'answer', sessionId);
@@ -442,6 +463,7 @@ const setWinnerManually = async (req, res) => {
         tiktokId,
         nickname,
         points,
+        answer: currentQuestion.answer,
         timestamp: new Date(),
         manual: true
       });
