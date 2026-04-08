@@ -84,8 +84,8 @@ export const getLeaderboard = async (timeFilter = 'all-time', sessionId = null) 
 
 // User Stats
 export const getUserStats = async (tiktokId, timeFilter = 'all-time') => {
-  const response = await api.get(`/stats/${tiktokId}`, { 
-    params: { timeFilter }
+  const response = await api.get(`/leaderboard/stats/${tiktokId}`, {
+    params: { timeFilter },
   });
   return response.data;
 };
@@ -123,7 +123,7 @@ export const getFilterOptions = async () => {
 
 // Participants
 export const getParticipants = async (sessionId) => {
-  const response = await api.get('/participants', { params: { sessionId } });
+  const response = await api.get('/leaderboard/participants', { params: { sessionId } });
   return response.data;
 };
 

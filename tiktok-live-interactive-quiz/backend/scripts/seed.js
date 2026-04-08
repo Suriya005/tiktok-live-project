@@ -1,6 +1,5 @@
 require('dotenv').config();
-const { connectDB, getDB } = require('../src/config/database');
-const Question = require('../src/models/Question');
+const { connectDatabase, getDatabase, closeDatabase } = require('../src/config/database');
 
 const sampleQuestions = [
   {
@@ -8,72 +7,78 @@ const sampleQuestions = [
     answer: 'Bangkok',
     hint: 'It is known as "The City of Angels"',
     category: 'Geography',
+    tags: ['geography', 'thailand'],
+    difficulty: 1,
     points: 10,
-    requiredCoins: 100
+    requiredCoins: 100,
   },
   {
     text: 'Which planet is known as the Red Planet?',
     answer: 'Mars',
     hint: 'It is named after the Roman god of war',
     category: 'Science',
+    tags: ['science', 'space'],
+    difficulty: 2,
     points: 15,
-    requiredCoins: 150
+    requiredCoins: 150,
   },
   {
     text: 'What is the largest ocean on Earth?',
     answer: 'Pacific Ocean',
     hint: 'It covers an area larger than all other oceans combined',
     category: 'Geography',
+    tags: ['geography', 'ocean'],
+    difficulty: 1,
     points: 10,
-    requiredCoins: 100
+    requiredCoins: 100,
   },
   {
     text: 'Who painted the Mona Lisa?',
     answer: 'Leonardo da Vinci',
     hint: 'He was an Italian Renaissance artist',
     category: 'Art',
+    tags: ['art', 'history'],
+    difficulty: 2,
     points: 20,
-    requiredCoins: 200
+    requiredCoins: 200,
   },
   {
     text: 'What is the chemical symbol for Gold?',
     answer: 'Au',
     hint: 'It comes from the Latin word "aurum"',
     category: 'Science',
+    tags: ['science', 'chemistry'],
+    difficulty: 3,
     points: 15,
-    requiredCoins: 150
-  }
+    requiredCoins: 150,
+  },
 ];
 
 const seed = async () => {
-  try {
-    console.log('🌱 Starting database seeding...');
-    
-    await connectDB();
-    const db = getDB();
+  await connectDatabase();
+  const db = getDatabase();
+  const collection = db.collection('questions');
 
-    // Clear existing questions
-    const questionsCollection = db.collection('questions');
-    await questionsCollection.deleteMany({});
-    console.log('✅ Cleared existing questions');
+  await collection.deleteMany({});
+  console.log('🗑️  Cleared existing questions');
 
-    // Insert sample questions
-    for (const questionData of sampleQuestions) {
-      const question = new Question(questionData);
-      const result = await question.save();
-      console.log(`✅ Added: "${questionData.text}"`);
-    }
+  const now = new Date();
+  const docs = sampleQuestions.map((q) => ({
+    ...q,
+    answer: q.answer.toLowerCase().trim(),
+    options: q.options || [],
+    createdAt: now,
+    updatedAt: now,
+  }));
 
-    console.log(`
-✅ Database seeding completed!
-📊 Total questions added: ${sampleQuestions.length}
-    `);
+  await collection.insertMany(docs);
+  console.log(`✅ Seeded ${docs.length} questions`);
 
-    process.exit(0);
-  } catch (error) {
-    console.error('❌ Seeding error:', error.message);
-    process.exit(1);
-  }
+  await closeDatabase();
+  process.exit(0);
 };
 
-seed();
+seed().catch((err) => {
+  console.error('❌ Seed error:', err.message);
+  process.exit(1);
+});

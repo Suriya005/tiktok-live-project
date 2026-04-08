@@ -1,79 +1,76 @@
 const { MongoClient } = require('mongodb');
+const logger = require('../utils/logger');
 
+const DB_OPTIONS = {
+  maxPoolSize: 10,
+  minPoolSize: 2,
+  serverSelectionTimeoutMS: 5000,
+  connectTimeoutMS: 10000,
+  socketTimeoutMS: 45000,
+  writeConcern: { w: 'majority', j: true, wtimeoutMS: 5000 },
+  readPreference: 'primaryPreferred',
+};
+
+let client = null;
 let db = null;
 
-async function connectDB() {
-  try {
-    const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/tiktok-quiz';
-    const client = new MongoClient(uri);
-    
-    await client.connect();
-    db = client.db(process.env.MONGODB_DB || 'tiktok-quiz');
-    
-    console.log('✅ Connected to MongoDB');
-    
-    // Ensure collections and indexes exist
-    await initializeCollections();
-    
-    return db;
-  } catch (error) {
-    console.error('❌ MongoDB Connection Error:', error.message);
-    process.exit(1);
+async function connectDatabase() {
+  if (db) return db;
+
+  const uri = process.env.MONGODB_URI;
+  const dbName = process.env.MONGODB_DB;
+
+  if (!uri || !dbName) {
+    throw new Error('[Database] Missing MONGODB_URI or MONGODB_DB in environment config.');
   }
-}
 
-async function initializeCollections() {
-  try {
-    // Always create collections (idempotent)
-    // Create questions collection
-    try {
-      await db.createCollection('questions');
-      console.log('✅ Created collection: questions');
-    } catch (err) {
-      if (err.code !== 48) throw err; // 48 = namespace already exists
-    }
+  client = new MongoClient(uri, DB_OPTIONS);
+  await client.connect();
+  db = client.db(dbName);
 
-    await db.collection('questions').createIndex({ category: 1 });
-    await db.collection('questions').createIndex({ tags: 1 });
+  logger.info('[Database] Connected to MongoDB', { dbName });
+  await initializeCollections();
 
-    // Create points_log collection
-    try {
-      await db.createCollection('points_log');
-      console.log('✅ Created collection: points_log');
-    } catch (err) {
-      if (err.code !== 48) throw err;
-    }
-
-    await db.collection('points_log').createIndex({ tiktokId: 1 });
-    await db.collection('points_log').createIndex({ timestamp: 1 });
-    await db.collection('points_log').createIndex({ sessionId: 1 });
-
-    // Create gift_log collection
-    try {
-      await db.createCollection('gift_log');
-      console.log('✅ Created collection: gift_log');
-    } catch (err) {
-      if (err.code !== 48) throw err;
-    }
-
-    await db.collection('gift_log').createIndex({ tiktokId: 1 });
-    await db.collection('gift_log').createIndex({ timestamp: 1 });
-
-    console.log('✅ All collections and indexes initialized');
-  } catch (error) {
-    console.error('❌ Collection initialization error:', error.message);
-    throw error;
-  }
-}
-
-function getDB() {
-  if (!db) {
-    throw new Error('Database not connected. Call connectDB first.');
-  }
   return db;
 }
 
-module.exports = {
-  connectDB,
-  getDB
-};
+async function initializeCollections() {
+  const collections = ['questions', 'points_log', 'gift_log'];
+
+  for (const name of collections) {
+    try {
+      await db.createCollection(name);
+      logger.info(`[Database] Created collection: ${name}`);
+    } catch (err) {
+      if (err.code !== 48) throw err; // 48 = namespace already exists
+    }
+  }
+
+  await db.collection('questions').createIndex({ category: 1 });
+  await db.collection('questions').createIndex({ tags: 1 });
+
+  await db.collection('points_log').createIndex({ tiktokId: 1 });
+  await db.collection('points_log').createIndex({ timestamp: 1 });
+  await db.collection('points_log').createIndex({ sessionId: 1 });
+
+  await db.collection('gift_log').createIndex({ tiktokId: 1 });
+  await db.collection('gift_log').createIndex({ timestamp: 1 });
+
+  logger.info('[Database] All collections and indexes ready');
+}
+
+function getDatabase() {
+  if (!db) throw new Error('[Database] Call connectDatabase() first.');
+  return db;
+}
+
+async function closeDatabase() {
+  if (client) {
+    await client.close();
+    client = null;
+    db = null;
+    logger.info('[Database] Connection closed');
+  }
+}
+
+module.exports = { connectDatabase, getDatabase, closeDatabase };
