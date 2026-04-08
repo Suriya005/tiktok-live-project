@@ -59,9 +59,9 @@ export default function AdminPanel({ sessionId, setSessionId, onReady }) {
     try {
       const data = await api.getFilterOptions();
       setFilterOptions({
-        categories: data.categories || [],
-        tags: data.tags || [],
-        difficulties: data.difficulties || []
+        categories: data.data?.categories || [],
+        tags: data.data?.tags || [],
+        difficulties: data.data?.difficulties || []
       });
     } catch (error) {
       console.error('Error loading filter options:', error);
@@ -94,7 +94,7 @@ export default function AdminPanel({ sessionId, setSessionId, onReady }) {
   const loadParticipants = async () => {
     try {
       const data = await api.getParticipants(sessionId);
-      setParticipants(data.participants || []);
+      setParticipants(data.data || []);
     } catch (error) {
       console.error('Error loading participants:', error);
     }
@@ -136,7 +136,7 @@ export default function AdminPanel({ sessionId, setSessionId, onReady }) {
     const interval = setInterval(async () => {
       try {
         const data = await api.getLeaderboard(timeFilter, sessionId);
-        setLeaderboard(data.leaderboard || []);
+        setLeaderboard(data.data || []);
       } catch (error) {
         console.error('Error loading leaderboard:', error);
       }
@@ -158,12 +158,12 @@ export default function AdminPanel({ sessionId, setSessionId, onReady }) {
       };
       
       const data = await api.getQuestions(filters);
-      setQuestions(data.questions || []);
-      
+      setQuestions(data.data || []);
+
       // Update pagination info
       if (data.pagination) {
         setCurrentPage(data.pagination.page);
-        setTotalPages(data.pagination.pages);
+        setTotalPages(data.pagination.totalPages);
         setPaginationInfo(data.pagination);
       }
     } catch (error) {
@@ -298,11 +298,11 @@ export default function AdminPanel({ sessionId, setSessionId, onReady }) {
       };
       
       const data = await api.getQuestions(filters);
-      setQuestions(data.questions || []);
-      
+      setQuestions(data.data || []);
+
       if (data.pagination) {
         setCurrentPage(data.pagination.page);
-        setTotalPages(data.pagination.pages);
+        setTotalPages(data.pagination.totalPages);
         setPaginationInfo(data.pagination);
       }
       
@@ -330,15 +330,15 @@ export default function AdminPanel({ sessionId, setSessionId, onReady }) {
       // Get random question matching filters from API
       const data = await api.getRandomQuestion(filters);
       
-      if (!data.question) {
+      if (!data.data) {
         showNotification('⚠️ No questions match your filters', 'warning');
         setLoading(false);
         return;
       }
-      
-      setSelectedQuestion(data.question._id);
-      setSelectedQuestionData(data.question);
-      await api.startQuestion(data.question._id);
+
+      setSelectedQuestion(data.data._id);
+      setSelectedQuestionData(data.data);
+      await api.startQuestion(data.data._id);
       if (socket) {
         socket.emit('monitor-hint');
         socket.emit('reset-hint-progress');

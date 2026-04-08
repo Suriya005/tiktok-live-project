@@ -1,32 +1,14 @@
-const { getDatabase } = require('../../config/database');
-const { ObjectId } = require('mongodb');
+const Question = require('../../models/Question');
 
-const COLLECTION = 'questions';
+const findAll = () => Question.find({}).lean();
 
-const findAll = async () => {
-  const db = getDatabase();
-  return db.collection(COLLECTION).find({}).toArray();
-};
+const findById = (id) => Question.findById(id).lean();
 
-const findById = async (id) => {
-  const db = getDatabase();
-  return db.collection(COLLECTION).findOne({ _id: new ObjectId(id) });
-};
+const findByCategory = (category) => Question.find({ category }).lean();
 
-const findByCategory = async (category) => {
-  const db = getDatabase();
-  return db.collection(COLLECTION).find({ category }).toArray();
-};
-
-const findByTags = async (tags) => {
-  const db = getDatabase();
-  return db.collection(COLLECTION).find({ tags: { $in: tags } }).toArray();
-};
+const findByTags = (tags) => Question.find({ tags: { $in: tags } }).lean();
 
 const findWithFilters = async (filters = {}) => {
-  const db = getDatabase();
-  const collection = db.collection(COLLECTION);
-
   const query = {};
 
   if (filters.search && filters.search.trim()) {
@@ -47,8 +29,8 @@ const findWithFilters = async (filters = {}) => {
   const skip = (page - 1) * limit;
 
   const [total, questions] = await Promise.all([
-    collection.countDocuments(query),
-    collection.find(query).skip(skip).limit(limit).toArray(),
+    Question.countDocuments(query),
+    Question.find(query).skip(skip).limit(limit).lean(),
   ]);
 
   return {
@@ -58,7 +40,6 @@ const findWithFilters = async (filters = {}) => {
 };
 
 const getRandom = async (filters = {}) => {
-  const db = getDatabase();
   const query = {};
 
   if (filters.category && filters.category.length > 0) {
@@ -74,15 +55,13 @@ const getRandom = async (filters = {}) => {
     query.text = { $regex: filters.search, $options: 'i' };
   }
 
-  const questions = await db.collection(COLLECTION).find(query).limit(1000).toArray();
-
+  const questions = await Question.find(query).limit(1000).lean();
   if (questions.length === 0) return null;
   return questions[Math.floor(Math.random() * questions.length)];
 };
 
 const create = async (data) => {
-  const db = getDatabase();
-  const doc = {
+  const doc = new Question({
     text: data.text,
     options: data.options || [],
     answer: data.answer.toLowerCase().trim(),
@@ -92,36 +71,23 @@ const create = async (data) => {
     difficulty: data.difficulty || 1,
     points: data.points || 10,
     requiredCoins: data.requiredCoins || 100,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  };
-  const result = await db.collection(COLLECTION).insertOne(doc);
-  return { insertedId: result.insertedId, ...doc };
+  });
+  return doc.save();
 };
 
-const updateById = async (id, updateData) => {
-  const db = getDatabase();
-  const { _id, createdAt, ...safeData } = updateData;
-  return db.collection(COLLECTION).updateOne(
-    { _id: new ObjectId(id) },
-    { $set: { ...safeData, updatedAt: new Date() } },
-  );
+const updateById = (id, updateData) => {
+  const { _id, createdAt, updatedAt, __v, ...safeData } = updateData;
+  return Question.updateOne({ _id: id }, { $set: safeData });
 };
 
-const deleteById = async (id) => {
-  const db = getDatabase();
-  return db.collection(COLLECTION).deleteOne({ _id: new ObjectId(id) });
-};
+const deleteById = (id) => Question.deleteOne({ _id: id });
 
 const getStats = async () => {
-  const db = getDatabase();
-  const collection = db.collection(COLLECTION);
-
   const [total, byCategory, avgResult, allTags] = await Promise.all([
-    collection.countDocuments(),
-    collection.aggregate([{ $group: { _id: '$category', count: { $sum: 1 } } }]).toArray(),
-    collection.aggregate([{ $group: { _id: null, avg: { $avg: '$difficulty' } } }]).toArray(),
-    collection.distinct('tags'),
+    Question.countDocuments(),
+    Question.aggregate([{ $group: { _id: '$category', count: { $sum: 1 } } }]),
+    Question.aggregate([{ $group: { _id: null, avg: { $avg: '$difficulty' } } }]),
+    Question.distinct('tags'),
   ]);
 
   const byCategoryMap = {};
@@ -138,13 +104,10 @@ const getStats = async () => {
 };
 
 const getDistinctValues = async () => {
-  const db = getDatabase();
-  const collection = db.collection(COLLECTION);
-
   const [categories, tags, difficulties] = await Promise.all([
-    collection.distinct('category'),
-    collection.distinct('tags'),
-    collection.distinct('difficulty'),
+    Question.distinct('category'),
+    Question.distinct('tags'),
+    Question.distinct('difficulty'),
   ]);
 
   return {

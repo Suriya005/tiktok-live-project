@@ -1,10 +1,13 @@
 require('dotenv').config();
-const { connectDatabase, getDatabase, closeDatabase } = require('../src/config/database');
+const mongoose = require('mongoose');
+const Question = require('../src/models/Question');
+
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/tiktok-quiz';
 
 const sampleQuestions = [
   {
     text: 'What is the capital of Thailand?',
-    answer: 'Bangkok',
+    answer: 'bangkok',
     hint: 'It is known as "The City of Angels"',
     category: 'Geography',
     tags: ['geography', 'thailand'],
@@ -14,7 +17,7 @@ const sampleQuestions = [
   },
   {
     text: 'Which planet is known as the Red Planet?',
-    answer: 'Mars',
+    answer: 'mars',
     hint: 'It is named after the Roman god of war',
     category: 'Science',
     tags: ['science', 'space'],
@@ -24,7 +27,7 @@ const sampleQuestions = [
   },
   {
     text: 'What is the largest ocean on Earth?',
-    answer: 'Pacific Ocean',
+    answer: 'pacific ocean',
     hint: 'It covers an area larger than all other oceans combined',
     category: 'Geography',
     tags: ['geography', 'ocean'],
@@ -34,7 +37,7 @@ const sampleQuestions = [
   },
   {
     text: 'Who painted the Mona Lisa?',
-    answer: 'Leonardo da Vinci',
+    answer: 'leonardo da vinci',
     hint: 'He was an Italian Renaissance artist',
     category: 'Art',
     tags: ['art', 'history'],
@@ -44,7 +47,7 @@ const sampleQuestions = [
   },
   {
     text: 'What is the chemical symbol for Gold?',
-    answer: 'Au',
+    answer: 'au',
     hint: 'It comes from the Latin word "aurum"',
     category: 'Science',
     tags: ['science', 'chemistry'],
@@ -55,26 +58,16 @@ const sampleQuestions = [
 ];
 
 const seed = async () => {
-  await connectDatabase();
-  const db = getDatabase();
-  const collection = db.collection('questions');
+  await mongoose.connect(MONGODB_URI);
+  console.log('Connected to MongoDB');
 
-  await collection.deleteMany({});
+  await Question.deleteMany({});
   console.log('🗑️  Cleared existing questions');
 
-  const now = new Date();
-  const docs = sampleQuestions.map((q) => ({
-    ...q,
-    answer: q.answer.toLowerCase().trim(),
-    options: q.options || [],
-    createdAt: now,
-    updatedAt: now,
-  }));
+  await Question.insertMany(sampleQuestions);
+  console.log(`✅ Seeded ${sampleQuestions.length} questions`);
 
-  await collection.insertMany(docs);
-  console.log(`✅ Seeded ${docs.length} questions`);
-
-  await closeDatabase();
+  await mongoose.connection.close();
   process.exit(0);
 };
 

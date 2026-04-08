@@ -58,8 +58,8 @@ export default function QuestionManager() {
       };
 
       const data = await api.getQuestions(filters);
-      setQuestions(data.questions || []);
-      setTotalPages(data.pagination?.pages || 1);
+      setQuestions(data.data || []);
+      setTotalPages(data.pagination?.totalPages || 1);
       setPaginationInfo(data.pagination);
       setCurrentPage(page);
       
@@ -172,14 +172,14 @@ export default function QuestionManager() {
       
       const data = await api.getRandomQuestion(filters);
       
-      if (!data.question) {
+      if (!data.data) {
         showNotification('⚠️ No questions match your filters', 'warning');
         setLoading(false);
         return;
       }
-      
-      setNewQuestion(data.question);
-      setEditingId(data.question._id);
+
+      setNewQuestion(data.data);
+      setEditingId(data.data._id);
       showNotification('🎲 Random question loaded!', 'success', 2000);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
