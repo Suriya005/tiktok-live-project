@@ -30,6 +30,7 @@ export default function Overlay({ sessionId, onReady }) {
       console.log('📝 Question started:', data);
       setCurrentQuestion(data.question);
       setCurrentQuestionData(data.question);
+      setShowQuestionOptions(false);
       setHint(null);
       setWinner(null);
       setHintProgress(0);
@@ -40,6 +41,8 @@ export default function Overlay({ sessionId, onReady }) {
       console.log('🎉 Correct answer:', data);
       console.log('📋 Answer field:', data.answer);
       setCurrentQuestion(null);
+      setCurrentQuestionData(null);
+      setShowQuestionOptions(false);
       setWinner(data);
       setHintProgress(0);
       setGifts([]);
@@ -68,6 +71,7 @@ export default function Overlay({ sessionId, onReady }) {
       console.log('⏭️ Question skipped');
       setCurrentQuestion(null);
       setCurrentQuestionData(null);
+      setShowQuestionOptions(false);
       setHint(null);
       setWinner(null);
       setHintProgress(0);
@@ -86,6 +90,7 @@ export default function Overlay({ sessionId, onReady }) {
       // Reset overlay
       setCurrentQuestion(null);
       setCurrentQuestionData(null);
+      setShowQuestionOptions(false);
       setWinner(null);
       setHint(null);
       setHintProgress(0);
@@ -98,6 +103,7 @@ export default function Overlay({ sessionId, onReady }) {
       // Reset overlay
       setCurrentQuestion(null);
       setCurrentQuestionData(null);
+      setShowQuestionOptions(false);
       setWinner(null);
       setHint(null);
       setHintProgress(0);

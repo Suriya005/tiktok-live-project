@@ -18,10 +18,18 @@ export default function QuestionManager() {
   const [totalPages, setTotalPages] = useState(1);
   const [paginationInfo, setPaginationInfo] = useState(null);
   
+  // Filter options from database
+  const [filterOptions, setFilterOptions] = useState({
+    categories: [],
+    tags: []
+  });
+  
   const [stats, setStats] = useState(null);
   const [showStats, setShowStats] = useState(false);
   const [tagInput, setTagInput] = useState('');
   const [notification, setNotification] = useState(null);
+  const [isCustomCategory, setIsCustomCategory] = useState(false);
+  const [categoryInput, setCategoryInput] = useState('');
 
   const [newQuestion, setNewQuestion] = useState({
     text: '',
@@ -77,6 +85,34 @@ export default function QuestionManager() {
     loadQuestions(1);
   }, [searchText, filterCategory, filterTag, filterDifficulty, loadQuestions]);
 
+  // Load filter options on mount
+  useEffect(() => {
+    console.log('QuestionManager mounted, loading filter options...');
+    loadFilterOptions();
+  }, []);
+
+  const loadFilterOptions = async () => {
+    try {
+      console.log('Loading filter options...');
+      const response = await api.getFilterOptions();
+      console.log('Filter options response:', response);
+      const data = response.data;
+      console.log('Response data:', data);
+      setFilterOptions({
+        categories: data?.categories || [],
+        tags: data?.tags || []
+      });
+      console.log('Filter options set:', {
+        categories: data?.categories || [],
+        tags: data?.tags || []
+      });
+    } catch (error) {
+      console.error('Error loading filter options:', error);
+      // Fallback to empty arrays if API fails
+      setFilterOptions({ categories: [], tags: [] });
+    }
+  };
+
   const handleCreateQuestion = async () => {
     if (!newQuestion.text || !newQuestion.answer) {
       showNotification('⚠️ Question text and answer are required', 'warning');
@@ -106,6 +142,17 @@ export default function QuestionManager() {
   const handleEditQuestion = (q) => {
     setNewQuestion(q);
     setEditingId(q._id);
+    
+    // Check if category is custom (not in available options)
+    const availableCategories = getCategoryOptions();
+    if (availableCategories.includes(q.category)) {
+      setIsCustomCategory(false);
+      setCategoryInput('');
+    } else {
+      setIsCustomCategory(true);
+      setCategoryInput(q.category);
+    }
+    
     showNotification('✏️ Editing question - scroll up to see the form', 'info', 2000);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -180,6 +227,17 @@ export default function QuestionManager() {
 
       setNewQuestion(data.data);
       setEditingId(data.data._id);
+      
+      // Check if category is custom
+      const availableCategories = getCategoryOptions();
+      if (availableCategories.includes(data.data.category)) {
+        setIsCustomCategory(false);
+        setCategoryInput('');
+      } else {
+        setIsCustomCategory(true);
+        setCategoryInput(data.data.category);
+      }
+      
       showNotification('🎲 Random question loaded!', 'success', 2000);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
@@ -207,6 +265,8 @@ export default function QuestionManager() {
       requiredCoins: 100
     });
     setTagInput('');
+    setIsCustomCategory(false);
+    setCategoryInput('');
     setEditingId(null);
   };
 
@@ -243,7 +303,11 @@ export default function QuestionManager() {
   };
 
   const getCategoryOptions = () => {
-    return ['general', 'game', 'knowledge', 'entertainment'];
+    return filterOptions.categories;
+  };
+
+  const getTagOptions = () => {
+    return filterOptions.tags;
   };
 
   const getDifficultyOptions = () => {
@@ -291,25 +355,86 @@ export default function QuestionManager() {
         {/* Category */}
         <div style={{ marginBottom: '1rem' }}>
           <label style={{ display: 'block', marginBottom: '0.5rem', color: '#aaa' }}>Category</label>
-          <select
-            value={newQuestion.category}
-            onChange={(e) => setNewQuestion({ ...newQuestion, category: e.target.value })}
-            disabled={loading}
-            style={{
-              width: '100%',
-              padding: '0.75rem',
-              backgroundColor: '#0a0e27',
-              color: '#00ffff',
-              border: '1px solid #00ccff',
-              borderRadius: '4px',
-              cursor: 'pointer'
-            }}
-          >
-            <option value="general">General</option>
-            <option value="game">Game</option>
-            <option value="knowledge">Knowledge</option>
-            <option value="entertainment">Entertainment</option>
-          </select>
+          {!isCustomCategory ? (
+            <select
+              value={newQuestion.category}
+              onChange={(e) => {
+                if (e.target.value === 'custom') {
+                  setIsCustomCategory(true);
+                  setCategoryInput('');
+                  setNewQuestion({ ...newQuestion, category: '' });
+                } else {
+                  setNewQuestion({ ...newQuestion, category: e.target.value });
+                }
+              }}
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                backgroundColor: '#0a0e27',
+                color: '#00ffff',
+                border: '1px solid #00ccff',
+                borderRadius: '4px',
+                fontFamily: 'monospace'
+              }}
+            >
+              <option value="">Select category...</option>
+              {getCategoryOptions().map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+              <option value="custom">➕ Custom category...</option>
+            </select>
+          ) : (
+            <div style={{ position: 'relative' }}>
+              <input
+                type="text"
+                value={categoryInput}
+                onChange={(e) => {
+                  setCategoryInput(e.target.value);
+                  setNewQuestion({ ...newQuestion, category: e.target.value });
+                }}
+                disabled={loading}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  backgroundColor: '#0a0e27',
+                  color: '#00ffff',
+                  border: '1px solid #00ccff',
+                  borderRadius: '4px',
+                  fontFamily: 'monospace'
+                }}
+                placeholder="Enter custom category..."
+              />
+              <button
+                onClick={() => {
+                  setIsCustomCategory(false);
+                  setCategoryInput('');
+                  setNewQuestion({ ...newQuestion, category: '' });
+                }}
+                disabled={loading}
+                style={{
+                  position: 'absolute',
+                  right: '0.5rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  backgroundColor: '#ff6666',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  padding: '0.25rem 0.5rem',
+                  cursor: 'pointer',
+                  fontSize: '0.8rem'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          )}
+          {getCategoryOptions().length > 0 && !isCustomCategory && (
+            <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: '#666' }}>
+              Available categories: {getCategoryOptions().join(', ')}
+            </div>
+          )}
         </div>
 
         {/* Question Text */}
@@ -695,13 +820,10 @@ export default function QuestionManager() {
             fontFamily: 'monospace'
           }}
         >
-          <option value="">All Tags</option>
-          <option value="science">science</option>
-          <option value="history">history</option>
-          <option value="geography">geography</option>
-          <option value="sports">sports</option>
-          <option value="entertainment">entertainment</option>
-          <option value="technology">technology</option>
+          <option value="">All Tags ({getTagOptions().length})</option>
+          {getTagOptions().map(tag => (
+            <option key={tag} value={tag}>{tag}</option>
+          ))}
         </select>
 
         {/* Search and Random Buttons */}

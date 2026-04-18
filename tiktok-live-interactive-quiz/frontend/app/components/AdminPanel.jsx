@@ -678,7 +678,7 @@ export default function AdminPanel({ sessionId, setSessionId, onReady }) {
           )}
 
           <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '0.5rem' }}>
-            💡 <a href="/questions" style={{ color: '#00ffff', textDecoration: 'none' }}>/questions</a> for full CRUD
+            💡 <a href="/questions-manager" style={{ color: '#00ffff', textDecoration: 'none' }}>/questions-manager</a> for full CRUD
           </div>
             </>
           )}

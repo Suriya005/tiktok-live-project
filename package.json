@@ -5,5 +5,8 @@
     "express": "^5.2.1",
     "mongodb": "^7.0.0",
     "tiktok-live-connector": "^2.1.1-beta1"
+  },
+  "devDependencies": {
+    "mammoth": "^1.12.0"
   }
 }

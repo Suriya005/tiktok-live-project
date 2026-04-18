@@ -143,7 +143,7 @@ export default function HomePage() {
           e.currentTarget.style.boxShadow = '0 0 20px rgba(0, 255, 0, 0.3)';
           e.currentTarget.style.transform = 'translateY(0)';
         }}
-        onClick={() => router.push('/questions')}
+        onClick={() => router.push('/questions-manager')}
         >
           <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📝</div>
           <h2 style={{ color: '#00ff00', marginBottom: '0.5rem' }}>Question Manager</h2>
