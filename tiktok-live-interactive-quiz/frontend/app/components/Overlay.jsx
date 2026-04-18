@@ -7,6 +7,7 @@ import '../styles/overlay.css';
 export default function Overlay({ sessionId, onReady }) {
   const { socket, connected } = useSocket();
   const [currentQuestion, setCurrentQuestion] = useState(null);
+  const [currentQuestionData, setCurrentQuestionData] = useState(null);
   const [winner, setWinner] = useState(null);
   const [hint, setHint] = useState(null);
   const [gifts, setGifts] = useState([]);
@@ -28,6 +29,8 @@ export default function Overlay({ sessionId, onReady }) {
     socket.on('question-started', (data) => {
       console.log('📝 Question started:', data);
       setCurrentQuestion(data.question);
+      setCurrentQuestionData(data.question);
+      setShowQuestionOptions(false);
       setHint(null);
       setWinner(null);
       setHintProgress(0);
@@ -36,7 +39,10 @@ export default function Overlay({ sessionId, onReady }) {
     // Listen for correct answer (winner)
     socket.on('answer-correct', (data) => {
       console.log('🎉 Correct answer:', data);
+      console.log('📋 Answer field:', data.answer);
       setCurrentQuestion(null);
+      setCurrentQuestionData(null);
+      setShowQuestionOptions(false);
       setWinner(data);
       setHintProgress(0);
       setGifts([]);
@@ -64,6 +70,8 @@ export default function Overlay({ sessionId, onReady }) {
     socket.on('question-skipped', () => {
       console.log('⏭️ Question skipped');
       setCurrentQuestion(null);
+      setCurrentQuestionData(null);
+      setShowQuestionOptions(false);
       setHint(null);
       setWinner(null);
       setHintProgress(0);
@@ -81,6 +89,8 @@ export default function Overlay({ sessionId, onReady }) {
       console.log('✅ TikTok connected:', data);
       // Reset overlay
       setCurrentQuestion(null);
+      setCurrentQuestionData(null);
+      setShowQuestionOptions(false);
       setWinner(null);
       setHint(null);
       setHintProgress(0);
@@ -92,6 +102,8 @@ export default function Overlay({ sessionId, onReady }) {
       console.log('❌ TikTok disconnected:', data);
       // Reset overlay
       setCurrentQuestion(null);
+      setCurrentQuestionData(null);
+      setShowQuestionOptions(false);
       setWinner(null);
       setHint(null);
       setHintProgress(0);
@@ -194,6 +206,7 @@ export default function Overlay({ sessionId, onReady }) {
       {displayState === 'question' && (
         <div className="question-card">
           <span className="question-category">{currentQuestion.category}</span>
+          <span className="meta-value">{'⭐'.repeat(currentQuestion.difficulty || 0)}</span>
           <div className="question-text">{currentQuestion.text}</div>
 
           <div className="question-meta">
@@ -288,7 +301,10 @@ export default function Overlay({ sessionId, onReady }) {
         <div className="winner-card">
           <div className="winner-emoji">🎉</div>
           <div className="winner-content">
-            <div className="winner-text">{winner.nickname}</div>
+            <div className="winner-text">{winner.nickname} ตอบถูก!</div>
+            <div style={{ fontSize: '1.2rem', color: '#000', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+              ✅คำตอบคือ:  {winner.answer || currentQuestionData?.answer || 'N/A'}
+            </div>
             <div className="winner-points">+{winner.points} Points!</div>
           </div>
         </div>

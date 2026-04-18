@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useSocket } from '../contexts/SocketContext';
 import * as api from '../services/api';
 import '../styles/overlay.css';
@@ -9,6 +9,7 @@ export default function AdminPanel({ sessionId, setSessionId, onReady }) {
   const { socket, connected } = useSocket();
   const [questions, setQuestions] = useState([]);
   const [selectedQuestion, setSelectedQuestion] = useState(null);
+  const [selectedQuestionData, setSelectedQuestionData] = useState(null);
   const [tiktokUsername, setTiktokUsername] = useState('');
   const [tiktokConnected, setTiktokConnected] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -29,6 +30,10 @@ export default function AdminPanel({ sessionId, setSessionId, onReady }) {
   const [showParticipantsList, setShowParticipantsList] = useState(false);
   const [searchParticipants, setSearchParticipants] = useState('');
   const [showQuestionOptions, setShowQuestionOptions] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [paginationInfo, setPaginationInfo] = useState(null);
+  const [showQuestionsList, setShowQuestionsList] = useState(false);
 
   // Helper function to show notification
   const showNotification = (message, type = 'info', duration = 2000) => {
@@ -54,9 +59,9 @@ export default function AdminPanel({ sessionId, setSessionId, onReady }) {
     try {
       const data = await api.getFilterOptions();
       setFilterOptions({
-        categories: data.categories || [],
-        tags: data.tags || [],
-        difficulties: data.difficulties || []
+        categories: data.data?.categories || [],
+        tags: data.data?.tags || [],
+        difficulties: data.data?.difficulties || []
       });
     } catch (error) {
       console.error('Error loading filter options:', error);
@@ -89,7 +94,7 @@ export default function AdminPanel({ sessionId, setSessionId, onReady }) {
   const loadParticipants = async () => {
     try {
       const data = await api.getParticipants(sessionId);
-      setParticipants(data.participants || []);
+      setParticipants(data.data || []);
     } catch (error) {
       console.error('Error loading participants:', error);
     }
@@ -131,7 +136,7 @@ export default function AdminPanel({ sessionId, setSessionId, onReady }) {
     const interval = setInterval(async () => {
       try {
         const data = await api.getLeaderboard(timeFilter, sessionId);
-        setLeaderboard(data.leaderboard || []);
+        setLeaderboard(data.data || []);
       } catch (error) {
         console.error('Error loading leaderboard:', error);
       }
@@ -140,22 +145,52 @@ export default function AdminPanel({ sessionId, setSessionId, onReady }) {
     return () => clearInterval(interval);
   }, [sessionId, timeFilter]);
 
-  const loadQuestions = async () => {
+  const loadQuestions = useCallback(async (page = 1) => {
     try {
       setLoading(true);
-      const data = await api.getQuestions();
-      setQuestions(data.questions || []);
+      const filters = {
+        search: searchText,
+        category: filterCategory,
+        tags: filterTag ? [filterTag] : [],
+        difficulty: filterDifficulty || null,
+        page,
+        limit: 20
+      };
+      
+      const data = await api.getQuestions(filters);
+      setQuestions(data.data || []);
+
+      // Update pagination info
+      if (data.pagination) {
+        setCurrentPage(data.pagination.page);
+        setTotalPages(data.pagination.totalPages);
+        setPaginationInfo(data.pagination);
+      }
     } catch (error) {
       console.error('Error loading questions:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchText, filterCategory, filterTag, filterDifficulty]);
+
+  // Reload questions when filters change
+  useEffect(() => {
+    if (isInitialized) {
+      setCurrentPage(1);
+      loadQuestions(1);
+    }
+  }, [searchText, filterCategory, filterTag, filterDifficulty, isInitialized, loadQuestions]);
+
 
   const handleStartQuestion = async (questionId) => {
     try {
       setLoading(true);
       setSelectedQuestion(questionId);
+      // Store the question data
+      const questionData = questions.find(q => q._id === questionId);
+      if (questionData) {
+        setSelectedQuestionData(questionData);
+      }
       await api.startQuestion(questionId);
       // Reset hint progress on frontend
       if (socket) {
@@ -248,32 +283,76 @@ export default function AdminPanel({ sessionId, setSessionId, onReady }) {
     }
   };
 
-  const handleRandomQuestion = async () => {
-    const filteredQuestions = questions.filter(q => 
-      (!searchText || q.text.toLowerCase().includes(searchText.toLowerCase())) &&
-      (filterCategory.length === 0 || filterCategory.includes(q.category)) &&
-      (!filterTag || q.tags?.includes(filterTag)) &&
-      (!filterDifficulty || q.difficulty.toString() === filterDifficulty)
-    );
-
-    if (filteredQuestions.length === 0) {
-      showNotification('⚠️ No questions match your search', 'warning');
-      return;
-    }
-
-    const randomQuestion = filteredQuestions[Math.floor(Math.random() * filteredQuestions.length)];
+  const handleSearchQuestions = async () => {
     try {
       setLoading(true);
-      setSelectedQuestion(randomQuestion._id);
-      await api.startQuestion(randomQuestion._id);
+      setCurrentPage(1);
+      
+      const filters = {
+        search: searchText,
+        category: filterCategory,
+        tags: filterTag ? [filterTag] : [],
+        difficulty: filterDifficulty || null,
+        page: 1,
+        limit: 20
+      };
+      
+      const data = await api.getQuestions(filters);
+      setQuestions(data.data || []);
+
+      if (data.pagination) {
+        setCurrentPage(data.pagination.page);
+        setTotalPages(data.pagination.totalPages);
+        setPaginationInfo(data.pagination);
+      }
+      
+      showNotification('🔍 Search updated!', 'info', 1500);
+    } catch (error) {
+      console.error('Error during search:', error);
+      showNotification('❌ Search failed', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRandomQuestion = async () => {
+    try {
+      setLoading(true);
+      
+      // Build filters from current state
+      const filters = {
+        search: searchText,
+        category: filterCategory,
+        tags: filterTag ? [filterTag] : [],
+        difficulty: filterDifficulty || null
+      };
+      
+      // Get random question matching filters from API
+      const data = await api.getRandomQuestion(filters);
+      
+      if (!data.data) {
+        showNotification('⚠️ No questions match your filters', 'warning');
+        setLoading(false);
+        return;
+      }
+
+      setSelectedQuestion(data.data._id);
+      setSelectedQuestionData(data.data);
+      await api.startQuestion(data.data._id);
       if (socket) {
         socket.emit('monitor-hint');
         socket.emit('reset-hint-progress');
       }
       showNotification('🎲 Random question displayed!', 'success', 1500);
     } catch (error) {
-      console.error('Error starting random question:', error);
-      showNotification(`❌ Failed to display question: ${error.message}`, 'error');
+      console.error('Error getting random question:', error);
+      
+      // Check if 404 (no questions found)
+      if (error.response?.status === 404) {
+        showNotification('⚠️ ไม่พบคำถาม', 'warning');
+      } else {
+        showNotification(`❌ Failed to get random question: ${error.message}`, 'error');
+      }
     } finally {
       setLoading(false);
     }
@@ -318,7 +397,27 @@ export default function AdminPanel({ sessionId, setSessionId, onReady }) {
       )}
 
       <div className="admin-panel" style={{ margin: 0, position: 'relative', maxHeight: 'none' }}>
-        <div className="panel-title">🎮 Admin Panel</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <div className="panel-title" style={{ margin: 0 }}>🎮 Admin Panel</div>
+          <button
+            onClick={() => window.location.href = 'http://192.168.1.2:3000/'}
+            style={{
+              padding: '0.5rem 1rem',
+              backgroundColor: '#6c63ff',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '0.9rem',
+              fontWeight: 'bold',
+              transition: 'background-color 0.3s'
+            }}
+            onMouseEnter={(e) => e.target.style.backgroundColor = '#5a52d5'}
+            onMouseLeave={(e) => e.target.style.backgroundColor = '#6c63ff'}
+          >
+            ← Back to Dashboard
+          </button>
+        </div>
 
         {/* TikTok Connection */}
         <div className="panel-section">
@@ -425,9 +524,9 @@ export default function AdminPanel({ sessionId, setSessionId, onReady }) {
               disabled={loading}
               style={{ marginBottom: 0 }}
             >
-              <option value="">All Difficulty ({filterOptions.difficulties.length})</option>
+              <option value="">ความยากทั้งหมด ({filterOptions.difficulties.length})</option>
               {filterOptions.difficulties.map(diff => (
-                <option key={diff} value={diff}>Level {diff}</option>
+                <option key={diff} value={diff}>ระดับความยาก {diff}</option>
               ))}
             </select>
           </div>
@@ -446,31 +545,48 @@ export default function AdminPanel({ sessionId, setSessionId, onReady }) {
             ))}
           </select>
 
-          {/* Random Button */}
-          <button
-            className="button"
-            onClick={handleRandomQuestion}
-            disabled={loading}
-            style={{
-              width: '100%',
-              marginBottom: '0.75rem',
-              backgroundColor: '#ff6b9d',
-              padding: '0.75rem'
-            }}
-          >
-            🎲 Random from Search
-          </button>
+          {/* Search and Random Buttons */}
+          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+            <button
+              className="button"
+              onClick={handleSearchQuestions}
+              disabled={loading}
+              style={{
+                flex: 1,
+                backgroundColor: '#00ffff',
+                color: '#000',
+                padding: '0.75rem',
+                fontWeight: 'bold'
+              }}
+            >
+              🔍 Search
+            </button>
+            <button
+              className="button"
+              onClick={handleRandomQuestion}
+              disabled={loading}
+              style={{
+                flex: 1,
+                backgroundColor: '#ff6b9d',
+                padding: '0.75rem'
+              }}
+            >
+              🎲 Random
+            </button>
+          </div>
 
           {/* Questions List */}
-          <div className="section-content" style={{ maxHeight: '550px', overflowY: 'auto' }}>
-            {questions
-              .filter(q => 
-                (!searchText || q.text.toLowerCase().includes(searchText.toLowerCase())) &&
-                (filterCategory.length === 0 || filterCategory.includes(q.category)) &&
-                (!filterTag || q.tags?.includes(filterTag)) &&
-                (!filterDifficulty || q.difficulty.toString() === filterDifficulty)
-              )
-              .map(q => (
+          <div 
+            className="section-label" 
+            style={{ cursor: 'pointer', marginBottom: '0.75rem' }} 
+            onClick={() => setShowQuestionsList(!showQuestionsList)}
+          >
+            📋 Questions List {showQuestionsList ? '▼' : '▶'}
+          </div>
+          {showQuestionsList && (
+            <>
+          <div className="section-content" style={{ maxHeight: '500px', overflowY: 'auto' }}>
+            {questions.map(q => (
                 <div
                   key={q._id}
                   style={{
@@ -505,28 +621,74 @@ export default function AdminPanel({ sessionId, setSessionId, onReady }) {
                   </button>
                 </div>
               ))}
-            {questions.filter(q => 
-              (!searchText || q.text.toLowerCase().includes(searchText.toLowerCase())) &&
-              (filterCategory.length === 0 || filterCategory.includes(q.category)) &&
-              (!filterTag || q.tags?.includes(filterTag)) &&
-              (!filterDifficulty || q.difficulty.toString() === filterDifficulty)
-            ).length === 0 && (
+            {questions.length === 0 && (
               <div style={{ textAlign: 'center', color: '#666', padding: '1rem', fontSize: '0.8rem' }}>
                 No questions found
               </div>
             )}
           </div>
 
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginTop: '0.75rem',
+              padding: '0.5rem',
+              backgroundColor: 'rgba(0, 255, 255, 0.1)',
+              borderRadius: '4px',
+              fontSize: '0.75rem',
+              color: '#00ffff'
+            }}>
+              <button
+                onClick={() => loadQuestions(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1 || loading}
+                style={{
+                  padding: '0.4rem 0.6rem',
+                  backgroundColor: currentPage === 1 ? '#333' : '#00ffff',
+                  color: currentPage === 1 ? '#666' : '#000',
+                  border: 'none',
+                  borderRadius: '3px',
+                  cursor: currentPage === 1 ? 'default' : 'pointer',
+                  fontSize: '0.7rem',
+                  fontWeight: 'bold'
+                }}
+              >
+                ← Previous
+              </button>
+              <span>Page {currentPage} / {totalPages}{paginationInfo ? ` (${paginationInfo.total} total)` : ''}</span>
+              <button
+                onClick={() => loadQuestions(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages || loading}
+                style={{
+                  padding: '0.4rem 0.6rem',
+                  backgroundColor: currentPage === totalPages ? '#333' : '#00ffff',
+                  color: currentPage === totalPages ? '#666' : '#000',
+                  border: 'none',
+                  borderRadius: '3px',
+                  cursor: currentPage === totalPages ? 'default' : 'pointer',
+                  fontSize: '0.7rem',
+                  fontWeight: 'bold'
+                }}
+              >
+                Next →
+              </button>
+            </div>
+          )}
+
           <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '0.5rem' }}>
-            💡 <a href="/questions" style={{ color: '#00ffff', textDecoration: 'none' }}>/questions</a> for full CRUD
+            💡 <a href="/questions-manager" style={{ color: '#00ffff', textDecoration: 'none' }}>/questions-manager</a> for full CRUD
           </div>
+            </>
+          )}
         </div>
 
         {/* Current Answer Display */}
         {selectedQuestion && (
           <div className="panel-section" style={{ backgroundColor: '#001a00', borderLeft: '3px solid #00ff00' }}>
             <div className="section-label">📝 Current Answer</div>
-            {questions.find(q => q._id === selectedQuestion) && (
+            {(selectedQuestionData || questions.find(q => q._id === selectedQuestion)) && (
               <div>
                 <div style={{
                   backgroundColor: '#003300',
@@ -536,18 +698,18 @@ export default function AdminPanel({ sessionId, setSessionId, onReady }) {
                   marginBottom: '0.5rem'
                 }}>
                   <div style={{ fontSize: '0.8rem', color: '#aaa', marginBottom: '0.5rem' }}>
-                    {questions.find(q => q._id === selectedQuestion)?.text}
+                    {(selectedQuestionData || questions.find(q => q._id === selectedQuestion))?.text}
                   </div>
                   <div style={{ fontSize: '1.8rem', color: '#00ff00', fontWeight: 'bold', letterSpacing: '2px' }}>
-                    ✅ {questions.find(q => q._id === selectedQuestion)?.answer}
+                    ✅ {(selectedQuestionData || questions.find(q => q._id === selectedQuestion))?.answer}
                   </div>
                   <div style={{ fontSize: '0.75rem', color: '#00cc00', marginTop: '0.5rem' }}>
-                    Hint: {questions.find(q => q._id === selectedQuestion)?.hint || 'N/A'}
+                    Hint: {(selectedQuestionData || questions.find(q => q._id === selectedQuestion))?.hint || 'N/A'}
                   </div>
                 </div>
 
                 {/* Options Display */}
-                {questions.find(q => q._id === selectedQuestion)?.options && questions.find(q => q._id === selectedQuestion)?.options.length > 0 && (
+                {(selectedQuestionData || questions.find(q => q._id === selectedQuestion))?.options && (selectedQuestionData || questions.find(q => q._id === selectedQuestion))?.options.length > 0 && (
                   <div>
                     <button
                       onClick={() => setShowQuestionOptions(!showQuestionOptions)}
@@ -577,10 +739,10 @@ export default function AdminPanel({ sessionId, setSessionId, onReady }) {
                         marginTop: '0.5rem'
                       }}>
                         <div style={{ fontSize: '0.85rem', color: '#00ff00', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                          📋 Options ({questions.find(q => q._id === selectedQuestion)?.options.length})
+                          📋 Options ({(selectedQuestionData || questions.find(q => q._id === selectedQuestion))?.options.length})
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                          {questions.find(q => q._id === selectedQuestion)?.options.map((option, idx) => (
+                          {(selectedQuestionData || questions.find(q => q._id === selectedQuestion))?.options.map((option, idx) => (
                             <div
                               key={idx}
                               style={{

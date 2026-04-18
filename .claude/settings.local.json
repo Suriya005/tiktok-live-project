@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"require\\('./src/app'\\)\")",
+      "Bash(node --check src/app.js)",
+      "Bash(node --check src/server.js)",
+      "Bash(node -e ':*)"
+    ]
+  }
+}

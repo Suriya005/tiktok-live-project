@@ -8,8 +8,31 @@ const api = axios.create({
 });
 
 // Questions
-export const getQuestions = async () => {
-  const response = await api.get('/questions');
+export const getQuestions = async (filters = {}) => {
+  // Send filters as POST body
+  const payload = {
+    search: filters.search || '',
+    category: filters.category || [],
+    tags: filters.tags || [],
+    difficulty: filters.difficulty || null,
+    page: filters.page || 1,
+    limit: filters.limit || 20
+  };
+  
+  const response = await api.post('/questions/search', payload);
+  return response.data;
+};
+
+export const getRandomQuestion = async (filters = {}) => {
+  // Get random question matching filters
+  const payload = {
+    search: filters.search || '',
+    category: filters.category || [],
+    tags: filters.tags || [],
+    difficulty: filters.difficulty || null
+  };
+  
+  const response = await api.post('/questions/random', payload);
   return response.data;
 };
 
@@ -46,12 +69,6 @@ export const getQuestionsByTags = async (tags) => {
   return response.data;
 };
 
-export const getRandomQuestion = async (tags = null) => {
-  const params = tags ? { tags: Array.isArray(tags) ? tags : [tags] } : {};
-  const response = await api.get('/questions/random', { params });
-  return response.data;
-};
-
 export const getQuestionStats = async () => {
   const response = await api.get('/questions/stats');
   return response.data;
@@ -67,8 +84,8 @@ export const getLeaderboard = async (timeFilter = 'all-time', sessionId = null) 
 
 // User Stats
 export const getUserStats = async (tiktokId, timeFilter = 'all-time') => {
-  const response = await api.get(`/stats/${tiktokId}`, { 
-    params: { timeFilter }
+  const response = await api.get(`/leaderboard/stats/${tiktokId}`, {
+    params: { timeFilter },
   });
   return response.data;
 };
@@ -106,7 +123,7 @@ export const getFilterOptions = async () => {
 
 // Participants
 export const getParticipants = async (sessionId) => {
-  const response = await api.get('/participants', { params: { sessionId } });
+  const response = await api.get('/leaderboard/participants', { params: { sessionId } });
   return response.data;
 };
 

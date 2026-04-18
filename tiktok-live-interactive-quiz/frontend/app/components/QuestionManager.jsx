@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import * as api from '../services/api';
 import '../styles/overlay.css';
 
@@ -8,12 +8,28 @@ export default function QuestionManager() {
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [filterCategory, setFilterCategory] = useState('');
+  
+  // Filter states
+  const [searchText, setSearchText] = useState('');
+  const [filterCategory, setFilterCategory] = useState([]);
   const [filterTag, setFilterTag] = useState('');
+  const [filterDifficulty, setFilterDifficulty] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [paginationInfo, setPaginationInfo] = useState(null);
+  
+  // Filter options from database
+  const [filterOptions, setFilterOptions] = useState({
+    categories: [],
+    tags: []
+  });
+  
   const [stats, setStats] = useState(null);
   const [showStats, setShowStats] = useState(false);
   const [tagInput, setTagInput] = useState('');
   const [notification, setNotification] = useState(null);
+  const [isCustomCategory, setIsCustomCategory] = useState(false);
+  const [categoryInput, setCategoryInput] = useState('');
 
   const [newQuestion, setNewQuestion] = useState({
     text: '',
@@ -35,22 +51,65 @@ export default function QuestionManager() {
     }, duration);
   };
 
-  // Load questions on mount
-  useEffect(() => {
-    loadQuestions();
-  }, []);
-
-  const loadQuestions = async () => {
+  // Load questions with filters - memoized
+  const loadQuestions = useCallback(async (page = 1) => {
     try {
       setLoading(true);
-      const data = await api.getQuestions();
+      
+      const filters = {
+        search: searchText,
+        category: filterCategory,
+        tags: filterTag ? [filterTag] : [],
+        difficulty: filterDifficulty ? parseInt(filterDifficulty) : null,
+        page: page,
+        limit: 20
+      };
+
+      const data = await api.getQuestions(filters);
       setQuestions(data.data || []);
-      showNotification(`✅ Loaded ${data.data?.length || 0} questions`, 'success', 2000);
+      setTotalPages(data.pagination?.totalPages || 1);
+      setPaginationInfo(data.pagination);
+      setCurrentPage(page);
+      
     } catch (error) {
       console.error('Error loading questions:', error);
       showNotification('❌ Failed to load questions', 'error');
     } finally {
       setLoading(false);
+    }
+  }, [searchText, filterCategory, filterTag, filterDifficulty]);
+
+  // Auto-reload when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+    loadQuestions(1);
+  }, [searchText, filterCategory, filterTag, filterDifficulty, loadQuestions]);
+
+  // Load filter options on mount
+  useEffect(() => {
+    console.log('QuestionManager mounted, loading filter options...');
+    loadFilterOptions();
+  }, []);
+
+  const loadFilterOptions = async () => {
+    try {
+      console.log('Loading filter options...');
+      const response = await api.getFilterOptions();
+      console.log('Filter options response:', response);
+      const data = response.data;
+      console.log('Response data:', data);
+      setFilterOptions({
+        categories: data?.categories || [],
+        tags: data?.tags || []
+      });
+      console.log('Filter options set:', {
+        categories: data?.categories || [],
+        tags: data?.tags || []
+      });
+    } catch (error) {
+      console.error('Error loading filter options:', error);
+      // Fallback to empty arrays if API fails
+      setFilterOptions({ categories: [], tags: [] });
     }
   };
 
@@ -83,6 +142,17 @@ export default function QuestionManager() {
   const handleEditQuestion = (q) => {
     setNewQuestion(q);
     setEditingId(q._id);
+    
+    // Check if category is custom (not in available options)
+    const availableCategories = getCategoryOptions();
+    if (availableCategories.includes(q.category)) {
+      setIsCustomCategory(false);
+      setCategoryInput('');
+    } else {
+      setIsCustomCategory(true);
+      setCategoryInput(q.category);
+    }
+    
     showNotification('✏️ Editing question - scroll up to see the form', 'info', 2000);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -138,13 +208,45 @@ export default function QuestionManager() {
   const handleGetRandomQuestion = async () => {
     try {
       setLoading(true);
-      const data = await api.getRandomQuestion(filterTag ? [filterTag] : null);
+      
+      // Build filters from current state
+      const filters = {
+        search: searchText,
+        category: filterCategory,
+        tags: filterTag ? [filterTag] : [],
+        difficulty: filterDifficulty ? parseInt(filterDifficulty) : null
+      };
+      
+      const data = await api.getRandomQuestion(filters);
+      
+      if (!data.data) {
+        showNotification('⚠️ No questions match your filters', 'warning');
+        setLoading(false);
+        return;
+      }
+
       setNewQuestion(data.data);
       setEditingId(data.data._id);
+      
+      // Check if category is custom
+      const availableCategories = getCategoryOptions();
+      if (availableCategories.includes(data.data.category)) {
+        setIsCustomCategory(false);
+        setCategoryInput('');
+      } else {
+        setIsCustomCategory(true);
+        setCategoryInput(data.data.category);
+      }
+      
       showNotification('🎲 Random question loaded!', 'success', 2000);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
       console.error('Error getting random question:', error);
-      showNotification(`❌ Failed to get random question: ${error.message}`, 'error');
+      if (error.response?.status === 404) {
+        showNotification('⚠️ ไม่พบคำถาม', 'warning');
+      } else {
+        showNotification(`❌ Failed to get random question: ${error.message}`, 'error');
+      }
     } finally {
       setLoading(false);
     }
@@ -163,19 +265,80 @@ export default function QuestionManager() {
       requiredCoins: 100
     });
     setTagInput('');
+    setIsCustomCategory(false);
+    setCategoryInput('');
     setEditingId(null);
   };
 
-  const filteredQuestions = questions.filter(q => 
-    (!filterCategory || q.category === filterCategory) &&
-    (!filterTag || q.tags?.includes(filterTag))
-  );
+  const handleClearFilters = () => {
+    setSearchText('');
+    setFilterCategory([]);
+    setFilterTag('');
+    setFilterDifficulty('');
+    setCurrentPage(1);
+  };
+
+  const handleSearchQuestions = async () => {
+    setCurrentPage(1);
+    await loadQuestions(1);
+  };
+
+  // Pagination handlers
+  const handlePreviousPage = async () => {
+    const newPage = Math.max(1, currentPage - 1);
+    await loadQuestions(newPage);
+  };
+
+  const handleNextPage = async () => {
+    const newPage = Math.min(totalPages, currentPage + 1);
+    await loadQuestions(newPage);
+  };
+
+  const handleToggleCategory = (cat) => {
+    setFilterCategory(prev => 
+      prev.includes(cat) 
+        ? prev.filter(c => c !== cat)
+        : [...prev, cat]
+    );
+  };
+
+  const getCategoryOptions = () => {
+    return filterOptions.categories;
+  };
+
+  const getTagOptions = () => {
+    return filterOptions.tags;
+  };
+
+  const getDifficultyOptions = () => {
+    return [1, 2, 3, 4, 5];
+  };
 
   return (
     <div style={{ padding: '2rem', color: '#fff' }}>
-      <h1 style={{ color: '#00ffff', marginBottom: '2rem', textAlign: 'center' }}>
-        📝 Question Manager
-      </h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+        <h1 style={{ color: '#00ffff', margin: 0 }}>
+          📝 Question Manager
+        </h1>
+        <button
+          onClick={() => window.location.href = 'http://192.168.1.2:3000/'}
+          style={{
+            padding: '0.5rem 1rem',
+            backgroundColor: '#6c63ff',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '0.9rem',
+            fontWeight: 'bold',
+            transition: 'background-color 0.3s'
+          }}
+          onMouseEnter={(e) => e.target.style.backgroundColor = '#5a52d5'}
+          onMouseLeave={(e) => e.target.style.backgroundColor = '#6c63ff'}
+        >
+          ← Back to Dashboard
+        </button>
+      </div>
 
       {/* Form */}
       <div style={{
@@ -192,25 +355,86 @@ export default function QuestionManager() {
         {/* Category */}
         <div style={{ marginBottom: '1rem' }}>
           <label style={{ display: 'block', marginBottom: '0.5rem', color: '#aaa' }}>Category</label>
-          <select
-            value={newQuestion.category}
-            onChange={(e) => setNewQuestion({ ...newQuestion, category: e.target.value })}
-            disabled={loading}
-            style={{
-              width: '100%',
-              padding: '0.75rem',
-              backgroundColor: '#0a0e27',
-              color: '#00ffff',
-              border: '1px solid #00ccff',
-              borderRadius: '4px',
-              cursor: 'pointer'
-            }}
-          >
-            <option value="general">General</option>
-            <option value="game">Game</option>
-            <option value="knowledge">Knowledge</option>
-            <option value="entertainment">Entertainment</option>
-          </select>
+          {!isCustomCategory ? (
+            <select
+              value={newQuestion.category}
+              onChange={(e) => {
+                if (e.target.value === 'custom') {
+                  setIsCustomCategory(true);
+                  setCategoryInput('');
+                  setNewQuestion({ ...newQuestion, category: '' });
+                } else {
+                  setNewQuestion({ ...newQuestion, category: e.target.value });
+                }
+              }}
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                backgroundColor: '#0a0e27',
+                color: '#00ffff',
+                border: '1px solid #00ccff',
+                borderRadius: '4px',
+                fontFamily: 'monospace'
+              }}
+            >
+              <option value="">Select category...</option>
+              {getCategoryOptions().map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+              <option value="custom">➕ Custom category...</option>
+            </select>
+          ) : (
+            <div style={{ position: 'relative' }}>
+              <input
+                type="text"
+                value={categoryInput}
+                onChange={(e) => {
+                  setCategoryInput(e.target.value);
+                  setNewQuestion({ ...newQuestion, category: e.target.value });
+                }}
+                disabled={loading}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  backgroundColor: '#0a0e27',
+                  color: '#00ffff',
+                  border: '1px solid #00ccff',
+                  borderRadius: '4px',
+                  fontFamily: 'monospace'
+                }}
+                placeholder="Enter custom category..."
+              />
+              <button
+                onClick={() => {
+                  setIsCustomCategory(false);
+                  setCategoryInput('');
+                  setNewQuestion({ ...newQuestion, category: '' });
+                }}
+                disabled={loading}
+                style={{
+                  position: 'absolute',
+                  right: '0.5rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  backgroundColor: '#ff6666',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  padding: '0.25rem 0.5rem',
+                  cursor: 'pointer',
+                  fontSize: '0.8rem'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          )}
+          {getCategoryOptions().length > 0 && !isCustomCategory && (
+            <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: '#666' }}>
+              Available categories: {getCategoryOptions().join(', ')}
+            </div>
+          )}
         </div>
 
         {/* Question Text */}
@@ -468,7 +692,7 @@ export default function QuestionManager() {
         </div>
       </div>
 
-      {/* Filters & Tools */}
+      {/* Search & Filters */}
       <div style={{
         backgroundColor: '#1a1f3a',
         border: '1px solid #00ccff',
@@ -476,87 +700,169 @@ export default function QuestionManager() {
         padding: '1.5rem',
         marginBottom: '2rem'
       }}>
-        <h3 style={{ color: '#00ffff', marginBottom: '1rem' }}>🔍 Filters & Tools</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-          <select
-            value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value)}
-            style={{
-              padding: '0.75rem',
-              backgroundColor: '#0a0e27',
-              color: '#00ffff',
-              border: '1px solid #00ccff',
-              borderRadius: '4px'
-            }}
-          >
-            <option value="">All Categories</option>
-            <option value="general">General</option>
-            <option value="game">Game</option>
-            <option value="knowledge">Knowledge</option>
-            <option value="entertainment">Entertainment</option>
-          </select>
-          <input
-            type="text"
-            value={filterTag}
-            onChange={(e) => setFilterTag(e.target.value)}
-            placeholder="Filter by tag..."
-            style={{
-              padding: '0.75rem',
-              backgroundColor: '#0a0e27',
-              color: '#00ffff',
-              border: '1px solid #00ccff',
-              borderRadius: '4px'
-            }}
-          />
+        <h3 style={{ color: '#00ffff', marginBottom: '1rem' }}>🔍 📺 Search & Display Question</h3>
+        
+        {/* Search Input */}
+        <input
+          type="text"
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          placeholder="Search questions..."
+          style={{
+            width: '100%',
+            padding: '0.75rem',
+            backgroundColor: '#0a0e27',
+            color: '#00ffff',
+            border: '1px solid #00ccff',
+            borderRadius: '4px',
+            marginBottom: '0.75rem',
+            fontFamily: 'monospace'
+          }}
+          disabled={loading}
+        />
+
+        {/* Category Filter - Multi-Select */}
+        <div style={{ marginBottom: '0.75rem' }}>
+          <div style={{ fontSize: '0.85rem', color: '#00ffff', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+            📁 Categories ({filterCategory.length}/{getCategoryOptions().length})
+          </div>
+          {/* Select All */}
+          <label style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: '0.5rem',
+            backgroundColor: filterCategory.length === getCategoryOptions().length && getCategoryOptions().length > 0 ? 'rgba(255, 200, 0, 0.15)' : 'rgba(100, 100, 100, 0.1)',
+            border: `1px solid ${filterCategory.length === getCategoryOptions().length && getCategoryOptions().length > 0 ? '#ffc800' : 'rgba(100, 100, 100, 0.3)'}`,
+            borderRadius: '4px',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            color: filterCategory.length === getCategoryOptions().length && getCategoryOptions().length > 0 ? '#ffc800' : '#999',
+            marginBottom: '0.5rem',
+            fontWeight: 'bold'
+          }}>
+            <input
+              type="checkbox"
+              checked={filterCategory.length === getCategoryOptions().length && getCategoryOptions().length > 0}
+              onChange={() => {
+                if (filterCategory.length === getCategoryOptions().length) {
+                  setFilterCategory([]);
+                } else {
+                  setFilterCategory(getCategoryOptions());
+                }
+              }}
+              disabled={loading}
+              style={{ marginRight: '0.5rem', cursor: 'pointer' }}
+            />
+            <span style={{ fontSize: '0.8rem' }}>Select All</span>
+          </label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+            {getCategoryOptions().map(cat => (
+              <label key={cat} style={{
+                display: 'flex',
+                alignItems: 'center',
+                padding: '0.5rem',
+                backgroundColor: filterCategory.includes(cat) ? 'rgba(0, 255, 255, 0.15)' : 'rgba(100, 100, 100, 0.1)',
+                border: `1px solid ${filterCategory.includes(cat) ? '#00ffff' : 'rgba(100, 100, 100, 0.3)'}`,
+                borderRadius: '4px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                color: filterCategory.includes(cat) ? '#00ffff' : '#999'
+              }}>
+                <input
+                  type="checkbox"
+                  checked={filterCategory.includes(cat)}
+                  onChange={() => handleToggleCategory(cat)}
+                  disabled={loading}
+                  style={{ marginRight: '0.5rem', cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: '0.8rem' }}>{cat}</span>
+              </label>
+            ))}
+          </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
-          <button
-            onClick={handleLoadStats}
+
+        {/* Difficulty Filter */}
+        <div style={{ marginBottom: '0.75rem' }}>
+          <select
+            value={filterDifficulty}
+            onChange={(e) => setFilterDifficulty(e.target.value)}
             disabled={loading}
             style={{
+              width: '100%',
               padding: '0.75rem',
-              backgroundColor: '#00ccff',
+              backgroundColor: '#0a0e27',
+              color: '#00ffff',
+              border: '1px solid #00ccff',
+              borderRadius: '4px',
+              fontFamily: 'monospace'
+            }}
+          >
+            <option value="">ความยากทั้งหมด ({getDifficultyOptions().length})</option>
+            {getDifficultyOptions().map(diff => (
+              <option key={diff} value={diff}>ระดับความยาก {diff}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Tag Filter */}
+        <select
+          value={filterTag}
+          onChange={(e) => setFilterTag(e.target.value)}
+          disabled={loading}
+          style={{
+            width: '100%',
+            padding: '0.75rem',
+            backgroundColor: '#0a0e27',
+            color: '#00ffff',
+            border: '1px solid #00ccff',
+            borderRadius: '4px',
+            marginBottom: '0.75rem',
+            fontFamily: 'monospace'
+          }}
+        >
+          <option value="">All Tags ({getTagOptions().length})</option>
+          {getTagOptions().map(tag => (
+            <option key={tag} value={tag}>{tag}</option>
+          ))}
+        </select>
+
+        {/* Search and Random Buttons */}
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+          <button
+            onClick={handleSearchQuestions}
+            disabled={loading}
+            style={{
+              flex: 1,
+              backgroundColor: '#00ffff',
               color: '#000',
+              padding: '0.75rem',
               border: 'none',
               borderRadius: '4px',
               cursor: 'pointer',
               fontWeight: 'bold',
+              fontSize: '0.9rem',
               opacity: loading ? 0.5 : 1
             }}
           >
-            📊 Statistics
+            🔍 Search
           </button>
           <button
             onClick={handleGetRandomQuestion}
             disabled={loading}
             style={{
+              flex: 1,
+              backgroundColor: '#ff6b9d',
+              color: '#fff',
               padding: '0.75rem',
-              backgroundColor: '#00ccff',
-              color: '#000',
               border: 'none',
               borderRadius: '4px',
               cursor: 'pointer',
               fontWeight: 'bold',
+              fontSize: '0.9rem',
               opacity: loading ? 0.5 : 1
             }}
           >
             🎲 Random
-          </button>
-          <button
-            onClick={resetForm}
-            disabled={loading}
-            style={{
-              padding: '0.75rem',
-              backgroundColor: '#00ccff',
-              color: '#000',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontWeight: 'bold',
-              opacity: loading ? 0.5 : 1
-            }}
-          >
-            ➕ New
           </button>
         </div>
       </div>
@@ -617,18 +923,58 @@ export default function QuestionManager() {
         </div>
       )}
 
-      {/* Questions List */}
+      {/* Questions List with Pagination */}
       <div style={{
         backgroundColor: '#1a1f3a',
         border: '1px solid #00ccff',
         borderRadius: '8px',
         padding: '1.5rem'
       }}>
-        <h3 style={{ color: '#00ffff', marginBottom: '1rem' }}>
-          📋 Questions ({filteredQuestions.length})
-        </h3>
-        <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-          {filteredQuestions.map(q => (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <h3 style={{ color: '#00ffff', margin: 0 }}>
+            📋 Questions ({paginationInfo?.total || 0})
+          </h3>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <button
+              onClick={handlePreviousPage}
+              disabled={currentPage === 1 || loading}
+              style={{
+                padding: '0.5rem 0.75rem',
+                backgroundColor: currentPage === 1 ? '#666' : '#00ccff',
+                color: '#000',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                fontWeight: 'bold',
+                opacity: loading ? 0.5 : 1
+              }}
+            >
+              ←
+            </button>
+            <span style={{ color: '#aaa', minWidth: '120px', textAlign: 'center' }}>
+              Page {currentPage}/{totalPages}
+            </span>
+            <button
+              onClick={handleNextPage}
+              disabled={currentPage === totalPages || loading}
+              style={{
+                padding: '0.5rem 0.75rem',
+                backgroundColor: currentPage === totalPages ? '#666' : '#00ccff',
+                color: '#000',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                fontWeight: 'bold',
+                opacity: loading ? 0.5 : 1
+              }}
+            >
+              →
+            </button>
+          </div>
+        </div>
+
+        <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
+          {questions.map(q => (
             <div
               key={q._id}
               style={{
@@ -694,7 +1040,7 @@ export default function QuestionManager() {
             </div>
           ))}
 
-          {filteredQuestions.length === 0 && (
+          {questions.length === 0 && !loading && (
             <div style={{ textAlign: 'center', color: '#666', padding: '2rem' }}>
               No questions found
             </div>
